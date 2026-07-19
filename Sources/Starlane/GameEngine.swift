@@ -139,6 +139,8 @@ final class GameEngine {
     var environmentEffects = EnvironmentEffects()
     private var environmentAlertCooldown: Float = 0
     private var lastEnvironmentAlert = ""
+    private var enemyBaseAlertCooldown: Float = 0
+    private var lastEnemyBaseAlert = ""
 
     // Capital / assault events
     private var capitalEventTimer: Float = 90
@@ -418,7 +420,7 @@ final class GameEngine {
             return true
         } catch {
             print("Starlane load slot \(slot) failed: \(error)")
-            menuNotice("Could not load Slot \(slot).")
+            menuNotice("Could not load Slot \(slot) — save may be outdated. See console.")
             audio.play(.hurt)
             return false
         }
@@ -438,7 +440,9 @@ final class GameEngine {
             return true
         } catch {
             print("Starlane load autosave failed: \(error)")
-            menuNotice("No autosave found.")
+            menuNotice(SaveGame.existsAutosave
+                       ? "Autosave unreadable — may need a new save after update."
+                       : "No autosave found.")
             audio.play(.hurt)
             return false
         }
@@ -901,7 +905,7 @@ final class GameEngine {
             if tryInteractAnomaly() { break }
             tryMine()
         case Self.keyQ:
-            // Cycle primary DE weapon: lasers ↔ plasma
+            // Cycle primary DE: laser → plasma → pulse → rail
             cycleWeaponMode()
         case Self.keyB:
             firePlayerMissile()
@@ -912,6 +916,14 @@ final class GameEngine {
         case Self.key2:
             player.weaponMode = .plasma
             flash("Weapon: Plasma Cannon")
+            audio.play(.select)
+        case Self.key3:
+            player.weaponMode = .pulse
+            flash("Weapon: Pulse Array")
+            audio.play(.select)
+        case Self.key4:
+            player.weaponMode = .rail
+            flash("Weapon: Rail Lance")
             audio.play(.select)
         case Self.keyI:
             break // hold-to-scan handled in updatePlayer
@@ -959,10 +971,14 @@ final class GameEngine {
     }
 
     private func cycleWeaponMode() {
-        switch player.weaponMode {
-        case .laser: player.weaponMode = .plasma
-        case .plasma: player.weaponMode = .laser
+        let order = WeaponMode.allCases
+        guard let i = order.firstIndex(of: player.weaponMode) else {
+            player.weaponMode = .laser
+            flash("Weapon: Lasers")
+            audio.play(.select)
+            return
         }
+        player.weaponMode = order[(i + 1) % order.count]
         flash("Weapon: \(player.weaponMode.displayName)")
         audio.play(.select)
     }
@@ -1885,6 +1901,29 @@ final class GameEngine {
             lastEnvironmentAlert = ""
         }
 
+        // Proximity warning for pirate dens / enemy bases
+        if enemyBaseAlertCooldown > 0 { enemyBaseAlertCooldown -= dt }
+        if let den = currentSystem.stations.first(where: {
+            $0.isEnemyBase && distance(player.position, $0.position) < $0.defenseRange * 1.15
+        }) {
+            if den.name != lastEnemyBaseAlert || enemyBaseAlertCooldown <= 0 {
+                if playerAlliedWithPirates() || player.rep.repPirate >= 15 || player.isDirty {
+                    if den.name != lastEnemyBaseAlert {
+                        flash("\(den.name) — pirate den. Friendly if you keep standing.")
+                        lastEnemyBaseAlert = den.name
+                        enemyBaseAlertCooldown = 12
+                    }
+                } else {
+                    flash("⚠ \(den.name) turrets — hostile den. Leave or earn pirate standing.")
+                    audio.play(.hurt)
+                    lastEnemyBaseAlert = den.name
+                    enemyBaseAlertCooldown = 5
+                }
+            }
+        } else {
+            lastEnemyBaseAlert = ""
+        }
+
         // Continuous environmental damage — beats shield regen in full fields
         if e.damagePerSec > 0.01 {
             var dmg = e.damagePerSec * dt
@@ -2551,6 +2590,8 @@ final class GameEngine {
         switch player.weaponMode {
         case .laser: firePlayerLaser()
         case .plasma: firePlayerPlasma()
+        case .pulse: firePlayerPulse()
+        case .rail: firePlayerRail()
         }
     }
 
@@ -2619,6 +2660,77 @@ final class GameEngine {
                 velocity: angleToVector(a) * Float.random(in: 30...90),
                 life: Float.random(in: 0.12...0.22), maxLife: 0.22,
                 color: (0.7, 0.35, 1.0), size: Float.random(in: 3...7)
+            ))
+        }
+    }
+
+    private func firePlayerPulse() {
+        let cost = player.stats.pulseEnergyCost
+        guard player.energy >= cost else {
+            if fireCooldown <= 0 {
+                flash("Energy low — pulse offline.")
+                fireCooldown = 0.15
+                audio.play(.hurt)
+            }
+            return
+        }
+        player.energy -= cost
+        fireCooldown = player.stats.pulseCooldown * environmentEffects.weaponCooldownMult
+        let dir = angleToVector(player.angle)
+        let muzzle = player.position + dir * 16
+        // Twin staggered bolts
+        for side: Float in [-1, 1] {
+            let offset = angleToVector(player.angle + .pi / 2) * side * 4
+            projectiles.append(Projectile(
+                id: UUID(),
+                position: muzzle + offset,
+                velocity: dir * 580 + player.velocity * 0.25,
+                damage: player.stats.pulseDamage,
+                life: 0.85,
+                source: .player,
+                ownerID: nil,
+                kind: .pulse
+            ))
+        }
+        audio.play(.laser)
+        particles.append(Particle(
+            id: UUID(), position: muzzle, velocity: dir * 50,
+            life: 0.08, maxLife: 0.08,
+            color: (1.0, 0.92, 0.35), size: 3
+        ))
+    }
+
+    private func firePlayerRail() {
+        let cost = player.stats.railEnergyCost
+        guard player.energy >= cost else {
+            if fireCooldown <= 0 {
+                flash("Energy low — rail capacitors charging.")
+                fireCooldown = 0.3
+                audio.play(.hurt)
+            }
+            return
+        }
+        player.energy -= cost
+        fireCooldown = player.stats.railCooldown * environmentEffects.weaponCooldownMult
+        let dir = angleToVector(player.angle)
+        let muzzle = player.position + dir * 22
+        projectiles.append(Projectile(
+            id: UUID(),
+            position: muzzle,
+            velocity: dir * 900 + player.velocity * 0.1,
+            damage: player.stats.railDamage,
+            life: 1.6,
+            source: .player,
+            ownerID: nil,
+            kind: .rail
+        ))
+        audio.play(.laser)
+        for _ in 0..<5 {
+            particles.append(Particle(
+                id: UUID(), position: muzzle,
+                velocity: dir * Float.random(in: 40...120) + angleToVector(player.angle + Float.random(in: -0.4...0.4)) * 20,
+                life: Float.random(in: 0.1...0.2), maxLife: 0.2,
+                color: (0.55, 0.8, 1.0), size: Float.random(in: 2...5)
             ))
         }
     }
@@ -2738,10 +2850,11 @@ final class GameEngine {
                 let turnRate: Float = onTradeLane ? 3.4 : 2.5
                 let thrust: Float = onTradeLane ? 220 : 160
 
-                // Flee station defense envelopes when under fire / deep in range
+                // Flee friendly station defenses — not their own pirate dens
                 var fleeingStation = false
                 if let st = currentSystem.stations.first(where: {
-                    $0.hasDefenses && distance(ship.position, $0.position) < $0.defenseRange * 0.75
+                    $0.hasDefenses && !$0.isEnemyBase
+                        && distance(ship.position, $0.position) < $0.defenseRange * 0.75
                 }), ship.hull < ship.maxHull * 0.7 || distance(ship.position, st.position) < st.defenseRange * 0.45 {
                     let away = angleToward(st.position, ship.position)
                     ship.angle = lerpAngle(ship.angle, away, 3.2 * dt)
@@ -3308,25 +3421,71 @@ final class GameEngine {
     }
 
     private func fireNPC(_ ship: inout NPCShip) {
-        ship.fireCooldown = ship.isCapital ? Float.random(in: 0.28...0.5) : Float.random(in: 0.45...0.85)
-        let shots = ship.isCapital ? 2 : 1
-        for s in 0..<shots {
-            let spread = ship.isCapital ? Float(s) * 0.12 - 0.06 : 0
+        let profile = npcWeaponProfile(for: ship)
+        ship.fireCooldown = Float.random(in: profile.cooldown)
+        for s in 0..<profile.shots {
+            let spread: Float
+            if profile.shots <= 1 {
+                spread = 0
+            } else {
+                spread = (Float(s) / Float(profile.shots - 1) - 0.5) * profile.spread
+            }
             let d = angleToVector(ship.angle + spread)
+            let dmg = ship.damage * profile.damageMult
             projectiles.append(Projectile(
                 id: UUID(),
-                position: ship.position + d * (ship.isCapital ? 28 : 16),
-                velocity: d * (ship.isCapital ? 380 : 400) + ship.velocity * 0.2,
-                damage: ship.damage,
-                life: ship.isCapital ? 1.3 : 1.0,
+                position: ship.position + d * profile.muzzle,
+                velocity: d * profile.speed + ship.velocity * 0.2,
+                damage: dmg,
+                life: profile.life,
                 // Wingman shots treat as friendly / player team
                 source: ship.isWingman ? .player : .enemy,
                 ownerID: ship.id,
-                kind: .laser
+                kind: profile.kind
             ))
         }
-        // Occasional guided missile after lasers
+        // Occasional guided missile after primary (bombers / heavies more often)
         tryFireNPCMissile(&ship)
+    }
+
+    /// Faction / hull primary weapon feel (shot pattern + projectile kind).
+    private func npcWeaponProfile(for ship: NPCShip) -> (
+        kind: ProjectileKind, speed: Float, life: Float, cooldown: ClosedRange<Float>,
+        shots: Int, spread: Float, muzzle: Float, damageMult: Float
+    ) {
+        if ship.isCapital {
+            return (.plasma, 360, 1.35, 0.28...0.5, 3, 0.18, 28, 1.0)
+        }
+        switch ship.hullType {
+        case .pirateBomber:
+            return (.plasma, 340, 1.15, 0.55...0.9, 1, 0, 18, 0.85)
+        case .pirateGunship:
+            return (.laser, 400, 1.0, 0.4...0.7, 2, 0.1, 18, 1.0)
+        case .pirateRaider:
+            return (.laser, 420, 0.95, 0.35...0.65, 1, 0, 15, 1.0)
+        case .policeEnforcer:
+            return (.rail, 720, 1.4, 0.7...1.1, 1, 0, 20, 1.15)
+        case .interceptor:
+            return (.pulse, 560, 0.8, 0.22...0.4, 2, 0.08, 14, 0.7)
+        case .patrol:
+            return (.laser, 440, 1.05, 0.4...0.7, 2, 0.09, 16, 1.0)
+        case .militiaFrigate:
+            return (.rail, 680, 1.3, 0.75...1.15, 1, 0, 19, 1.1)
+        case .militiaCutter:
+            return (.laser, 400, 1.0, 0.45...0.8, 1, 0, 15, 1.0)
+        case .alienWarden:
+            return (.plasma, 360, 1.25, 0.4...0.7, 2, 0.14, 20, 1.1)
+        case .alienStalker:
+            return (.pulse, 520, 1.0, 0.28...0.5, 3, 0.12, 16, 0.75)
+        case .alienSkimmer:
+            return (.plasma, 400, 1.05, 0.35...0.6, 1, 0, 14, 1.0)
+        default:
+            // Cargo / wingmen fallbacks
+            if ship.isWingman {
+                return (.laser, 480, 1.0, 0.3...0.55, 2, 0.08, 14, 1.0)
+            }
+            return (.laser, 380, 0.9, 0.6...1.0, 1, 0, 14, 0.8)
+        }
     }
 
     /// Combat ships may launch a homing missile (ammo-limited).
@@ -3334,6 +3493,15 @@ final class GameEngine {
         // Gunner wingmen get limited missiles
         if ship.isWingman, ship.wingmanRole != .gunner { return }
         guard ship.missileAmmo > 0, ship.missileCooldown <= 0 else { return }
+        // Bombers fire racks often; light raiders rarely
+        let chance: Float
+        switch ship.hullType {
+        case .pirateBomber: chance = 0.55
+        case .pirateGunship, .policeEnforcer, .militiaFrigate, .alienWarden: chance = 0.28
+        case .alienStalker, .interceptor: chance = 0.18
+        default: chance = ship.isCapital ? 0.4 : 0.12
+        }
+        guard Float.random(in: 0...1) < chance else { return }
 
         // Who do we lock?
         let playerPos = player.position
@@ -3376,16 +3544,13 @@ final class GameEngine {
         let desired = angleToward(ship.position, aim)
         guard abs(wrapAngle(desired - ship.angle)) < 0.55 else { return }
 
-        // Fire rate / chance — capitals and wardens more often
-        let chance: Float
-        if ship.isCapital { chance = 0.55 }
-        else if ship.isAlien { chance = 0.38 }
-        else if ship.hullType == .pirateGunship || ship.hullType == .interceptor { chance = 0.28 }
-        else { chance = 0.18 }
-        guard Float.random(in: 0...1) < chance else { return }
-
         ship.missileAmmo -= 1
-        ship.missileCooldown = ship.isCapital ? Float.random(in: 2.8...4.2) : Float.random(in: 3.5...6.5)
+        // Bombers reload racks faster
+        if ship.hullType == .pirateBomber {
+            ship.missileCooldown = Float.random(in: 2.0...3.5)
+        } else {
+            ship.missileCooldown = ship.isCapital ? Float.random(in: 2.8...4.2) : Float.random(in: 3.5...6.5)
+        }
 
         let dir = angleToVector(ship.angle)
         let muzzle = ship.position + dir * (ship.isCapital ? 30 : 18)
@@ -3429,25 +3594,59 @@ final class GameEngine {
                 st.turretCooldown -= dt
             }
 
-            // Target nearest hostile (pirates) in range — also cover hostiles near traders
-            guard let target = npcs
-                .filter({ $0.isHostile && distance($0.position, st.position) < st.defenseRange })
-                .min(by: { distance($0.position, st.position) < distance($1.position, st.position) })
-            else {
+            let aimPos: SIMD2<Float>?
+            if st.isEnemyBase {
+                // Pirate dens: shoot law, and the player unless they're allied / protected
+                aimPos = enemyBaseTurretTarget(for: st)
+            } else {
+                // Friendly stations: shoot hostiles (pirates / aliens)
+                aimPos = npcs
+                    .filter({ $0.isHostile && distance($0.position, st.position) < st.defenseRange })
+                    .min(by: { distance($0.position, st.position) < distance($1.position, st.position) })
+                    .map(\.position)
+            }
+
+            guard let target = aimPos else {
                 sys.stations[sidx] = st
                 continue
             }
 
-            st.turretAim = angleToward(st.position, target.position)
+            st.turretAim = angleToward(st.position, target)
 
             if st.turretCooldown <= 0 {
-                fireStationTurret(&st, at: target.position)
+                fireStationTurret(&st, at: target)
                 st.turretCooldown = st.turretCooldownMax
             }
             sys.stations[sidx] = st
         }
 
         systems[currentSystemName] = sys
+    }
+
+    /// Whether pirate dens treat the player as a friend (dock + no guns).
+    private func playerAlliedWithPirates() -> Bool {
+        player.rep.repPirate >= 25 || player.protectionActive || player.wantedLevel >= 4
+    }
+
+    /// Pick turret aim for an enemy base: prefer law, then hostile player.
+    private func enemyBaseTurretTarget(for st: Station) -> SIMD2<Float>? {
+        let range = st.defenseRange
+        // Police / militia in range
+        if let law = npcs
+            .filter({
+                ($0.faction == .police || $0.faction == .militia)
+                    && !$0.isWingman
+                    && distance($0.position, st.position) < range
+            })
+            .min(by: { distance($0.position, st.position) < distance($1.position, st.position) }) {
+            return law.position
+        }
+        // Player if not allied and inside envelope
+        if !playerAlliedWithPirates(),
+           distance(player.position, st.position) < range {
+            return player.position
+        }
+        return nil
     }
 
     private func fireStationTurret(_ station: inout Station, at target: SIMD2<Float>) {
@@ -3506,7 +3705,15 @@ final class GameEngine {
             }
 
             let p = projectiles[i]
-            let hitRadius: Float = p.kind == .missile ? 14 : (p.kind == .plasma ? 10 : 6)
+            let hitRadius: Float = {
+                switch p.kind {
+                case .missile: return 14
+                case .plasma: return 10
+                case .rail: return 8
+                case .pulse: return 5
+                case .laser, .mine: return 6
+                }
+            }()
 
             switch p.source {
             case .player:
@@ -3532,21 +3739,47 @@ final class GameEngine {
                         let ast = systems[currentSystemName]!.asteroids[j]
                         if distance(p.position, ast.position) < ast.radius + 4 {
                             projectiles.remove(at: i)
-                            damageAsteroid(j, amount: p.kind == .plasma ? 2 : 1)
+                            let rockDmg = p.kind == .plasma || p.kind == .rail ? 2 : 1
+                            damageAsteroid(j, amount: rockDmg)
                             break
                         }
                     }
                 }
 
             case .station:
-                // Station guns only hit hostiles — never the player or friendlies
-                for j in npcs.indices.reversed() {
-                    guard npcs[j].isHostile else { continue }
-                    if distance(p.position, npcs[j].position) < npcs[j].radius + 8 {
-                        applyDamageToNPC(j, damage: p.damage, creditKill: false, stationKill: true)
-                        spawnHitParticles(at: p.position, enemy: true)
+                let ownerStation = p.ownerID.flatMap { id in
+                    currentSystem.stations.first(where: { $0.id == id })
+                }
+                let enemyBase = ownerStation?.isEnemyBase == true
+                if enemyBase {
+                    // Pirate den guns: hit player and law ships
+                    let playerHitR: Float = 16
+                    if invuln <= 0, distance(p.position, player.position) < playerHitR {
+                        applyDamageToPlayer(p.damage, fromHostile: true, attackerName: ownerStation?.name)
+                        spawnHitParticles(at: p.position, enemy: false)
                         projectiles.remove(at: i)
-                        break
+                        continue
+                    }
+                    for j in npcs.indices.reversed() {
+                        let f = npcs[j].faction
+                        guard f == .police || f == .militia else { continue }
+                        if distance(p.position, npcs[j].position) < npcs[j].radius + 8 {
+                            applyDamageToNPC(j, damage: p.damage, creditKill: false, stationKill: true)
+                            spawnHitParticles(at: p.position, enemy: true)
+                            projectiles.remove(at: i)
+                            break
+                        }
+                    }
+                } else {
+                    // Friendly stations: only hit hostiles — never the player or friendlies
+                    for j in npcs.indices.reversed() {
+                        guard npcs[j].isHostile else { continue }
+                        if distance(p.position, npcs[j].position) < npcs[j].radius + 8 {
+                            applyDamageToNPC(j, damage: p.damage, creditKill: false, stationKill: true)
+                            spawnHitParticles(at: p.position, enemy: true)
+                            projectiles.remove(at: i)
+                            break
+                        }
                     }
                 }
 
@@ -3667,7 +3900,7 @@ final class GameEngine {
                     postNews("\(currentSystemName): unknown craft destroyed — residual energy spikes.")
                 } else {
                     player.log.piratesDestroyed += 1
-                    progressCombatMissions(scanned: ship.scannedByPlayer)
+                    progressCombatMissions(scanned: ship.scannedByPlayer, killedFaction: ship.faction)
                     progressDefenseMissions()
                     var r = player.rep
                     r.adjust(police: 4, militia: 5, pirate: -6)
@@ -3715,6 +3948,10 @@ final class GameEngine {
         } else if creditKill, !ship.isWingman {
             // Player destroyed a non-hostile — heat + pirate friendship
             applyCivilianKillReputation(ship)
+            // Dirty dens offer bounties on law ships
+            if ship.faction == .police || ship.faction == .militia {
+                progressCombatMissions(scanned: ship.scannedByPlayer, killedFaction: ship.faction)
+            }
             if ship.isCargo {
                 let pods = max(1, ship.cargoPodsRemaining)
                 for _ in 0..<pods {
@@ -3980,7 +4217,14 @@ final class GameEngine {
             let dist = currentSystem.bounds * 0.9
             let pos = SIMD2(cos(angle), sin(angle)) * dist
             // Spawn off-screen relative to player
-            let spawnPos = player.position + normalizeSafe(pos - player.position) * 700
+            var spawnPos = player.position + normalizeSafe(pos - player.position) * 700
+            // Prefer reinforcing pirate dens when present
+            if currentSystemName != "Voidreach",
+               let den = currentSystem.stations.filter(\.isEnemyBase).randomElement(),
+               Float.random(in: 0...1) < 0.45 {
+                let a = Float.random(in: 0...(2 * .pi))
+                spawnPos = den.position + angleToVector(a) * Float.random(in: 280...640)
+            }
             let clamped = SIMD2(
                 max(-currentSystem.bounds, min(currentSystem.bounds, spawnPos.x)),
                 max(-currentSystem.bounds, min(currentSystem.bounds, spawnPos.y))
@@ -3988,6 +4232,11 @@ final class GameEngine {
             let faction: Faction
             if currentSystemName == "Voidreach" {
                 faction = .alien
+            } else if currentSystem.stations.contains(where: {
+                $0.isEnemyBase && distance($0.position, clamped) < $0.defenseRange * 1.4
+            }) {
+                // Near dens: almost always pirates
+                faction = Float.random(in: 0...1) < 0.12 ? .militia : .pirate
             } else {
                 let vael = GalaxyBuilder.vaelIntrusionChance(for: currentSystemName)
                 let r = Float.random(in: 0...1)
@@ -4528,7 +4777,11 @@ final class GameEngine {
         for st in currentSystem.stations {
             if distance(player.position, st.position) < st.dockRadius {
                 if !canDockAt(st) {
-                    flash("Docking refused — heat too high. Try Umbra / black markets.")
+                    if st.isEnemyBase {
+                        flash("\(st.name) turrets locked — raise pirate rep, buy protection, or get dirty.")
+                    } else {
+                        flash("Docking refused — heat too high. Try Umbra / pirate dens / black markets.")
+                    }
                     audio.play(.hurt)
                     return
                 }
@@ -4581,16 +4834,19 @@ final class GameEngine {
     }
 
     private func isDirtyFriendlyStation(_ station: Station) -> Bool {
-        station.faction == "Unaligned"
-            || station.name.localizedCaseInsensitiveContains("Black Market")
-            || station.name.localizedCaseInsensitiveContains("Quiet Hold")
-            || station.name.localizedCaseInsensitiveContains("Night Market")
-            || currentSystemName == "Umbra"
+        station.isOutlawDock || currentSystemName == "Umbra"
     }
 
     private func canDockAt(_ station: Station) -> Bool {
+        // Lawful stations refuse max-wanted pilots
         if player.wantedLevel >= 5 && !isDirtyFriendlyStation(station) {
             return false
+        }
+        // Pirate dens refuse clean pilots with no standing
+        if station.isEnemyBase {
+            return playerAlliedWithPirates()
+                || player.rep.repPirate >= 15
+                || player.isDirty
         }
         return true
     }
@@ -4614,15 +4870,19 @@ final class GameEngine {
         player.lastDockStation = station.name
         processLoanOnDock()
 
-        // Black-market special stock when dirty
-        if player.isDirty, var sys = systems[currentSystemName],
+        // Black-market / den special stock when dirty or at pirate dens
+        if (player.isDirty || station.isEnemyBase), var sys = systems[currentSystemName],
            let sidx = sys.stations.firstIndex(where: { $0.id == station.id }) {
             GalaxyBuilder.applyBlackMarketStock(to: &sys.stations[sidx], dirty: true)
             systems[currentSystemName] = sys
-            if sys.stations[sidx].faction == "Unaligned"
-                || station.name.localizedCaseInsensitiveContains("Black Market") {
-                flash("Black market open — dirty goods on special.")
-                postNews("\(station.name): underworld stock unlocked for known operators.")
+            if sys.stations[sidx].isOutlawDock {
+                if station.isEnemyBase {
+                    flash("Den market open — guns cheap, questions none.")
+                    postNews("\(station.name): pirate stock unlocked.")
+                } else {
+                    flash("Black market open — dirty goods on special.")
+                    postNews("\(station.name): underworld stock unlocked for known operators.")
+                }
             }
         }
 
@@ -4635,7 +4895,9 @@ final class GameEngine {
         tryCompleteEscortOnDock(station: station)
         recordMarketIntel(for: dockedStation ?? station, system: currentSystemName)
         var msg = "Docked at \(station.name)."
-        if let inv = player.investment(system: currentSystemName, station: station.name) {
+        if station.isEnemyBase {
+            msg = "Docked at \(station.name) — pirate den. Watch your back."
+        } else if let inv = player.investment(system: currentSystemName, station: station.name) {
             msg = "\(inv.berthName) — \(inv.tierLabel). Welcome home."
         } else if player.isWanted, station.faction == "Militia" {
             msg += " Militia desk can clear your bounty."
@@ -5185,11 +5447,23 @@ final class GameEngine {
         evaluateAchievements()
     }
 
-    private func progressCombatMissions(scanned: Bool = true) {
+    private func progressCombatMissions(scanned: Bool = true, killedFaction: Faction? = nil) {
         var deniedBounty = false
         for i in activeMissions.indices {
             switch activeMissions[i].kind {
-            case .bounty(let faction, _) where faction == .pirate:
+            case .bounty(let faction, _):
+                // Police bounty accepts militia kills too (law targets)
+                let matches: Bool = {
+                    guard let kf = killedFaction else {
+                        // Legacy calls from pirate-only path
+                        return faction == .pirate
+                    }
+                    if faction == .police {
+                        return kf == .police || kf == .militia
+                    }
+                    return kf == faction
+                }()
+                guard matches else { continue }
                 let needScan = activeMissions[i].requiresScan != false
                 if needScan && !scanned {
                     deniedBounty = true
@@ -5197,6 +5471,8 @@ final class GameEngine {
                 }
                 activeMissions[i].progress = min(activeMissions[i].target, activeMissions[i].progress + 1)
             case .patrol:
+                // Patrols credit hostile kills (not law bounties)
+                if let kf = killedFaction, kf == .police || kf == .militia { continue }
                 activeMissions[i].progress = min(activeMissions[i].target, activeMissions[i].progress + 1)
             default: break
             }
@@ -5508,7 +5784,7 @@ final class GameEngine {
 
     private func buyPirateProtection() {
         guard let st = dockedStation, isDirtyFriendlyStation(st) else {
-            flash("Pirate protection is sold in Umbra / black markets only.")
+            flash("Pirate protection is sold at dens / Umbra / black markets only.")
             audio.play(.hurt)
             return
         }

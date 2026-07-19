@@ -73,6 +73,7 @@ enum SaveGame {
             let snap = try load(slot: slot)
             return formatDescription(snap, prefix: "Slot \(slot)")
         } catch {
+            // File exists but decode failed — still show a row so the player knows
             return "Slot \(slot) — unreadable (corrupt or outdated)"
         }
     }

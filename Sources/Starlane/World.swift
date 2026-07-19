@@ -44,14 +44,22 @@ enum GalaxyBuilder {
         "Solara": ["Freeport 7", "Helios Depot", "Solara Relay"],
         "Vesper": ["Night Market", "Twilight Yard", "Silk Hab"],
         "Ironreach": ["Forge Station", "Border Watch", "Slag Anchorage"],
-        "Cinder": ["Ashport", "Ember Outpost"],
+        "Cinder": ["Ashport", "Ember Outpost", "Raider's Scar"],
         "Azurel": ["Coral Lab", "Reef Anchorage", "Tide Array"],
-        "Nyx": ["Eclipse Dock", "Shadow Buoy"],
+        "Nyx": ["Eclipse Dock", "Shadow Buoy", "Mute Corsair"],
         "Helion": ["Sunspan Exchange", "Corona Yard"],
-        "Drift": ["Belt Haven", "Prospector's Rest"],
+        "Drift": ["Belt Haven", "Prospector's Rest", "Hullbreaker Yard"],
         "Kestrel": ["Fort Kestrel", "Wing Barracks"],
-        "Umbra": ["Black Market Ring", "Quiet Hold"],
+        "Umbra": ["Black Market Ring", "Quiet Hold", "Bloodwake Den"],
         "Voidreach": ["Spire of Vael", "Resonance Anchorage"],
+    ]
+
+    /// Named pirate dens / enemy strongholds (system → station names).
+    static let enemyBaseCatalog: [String: [String]] = [
+        "Cinder": ["Raider's Scar"],
+        "Nyx": ["Mute Corsair"],
+        "Drift": ["Hullbreaker Yard"],
+        "Umbra": ["Bloodwake Den"],
     ]
 
     static func build() -> [String: StarSystem] {
@@ -238,14 +246,20 @@ enum GalaxyBuilder {
         let cinGateI = SIMD2<Float>(3800, 700)
         let cinGateU = SIMD2<Float>(2200, 3600)
 
+        // Pirate den tucked off the main freelanes
+        let cinRaider = SIMD2<Float>(3400, 2800)
+
         systems["Cinder"] = StarSystem(
             name: "Cinder", displayName: "Cinder System",
-            blurb: "Burned worlds. Broken lanes and hot salvage.",
+            blurb: "Burned worlds. Broken lanes and hot salvage. Raiders nest in the ash.",
             stations: [
                 makeStation("Ashport", cinAsh, "Frontier",
                             "Last honest dock. Expensive repairs.", .scrap, .scrap, .medical, repairMult: 1.6),
                 makeStation("Ember Outpost", cinEmber, "Frontier",
                             "Mining camp on a dead moon's orbit.", .ore, .ore, .food, repairMult: 1.5),
+                makeStation("Raider's Scar", cinRaider, "Pirate Clan",
+                            "Scorched pirate den. Turrets first, questions never.",
+                            .weapons, .weapons, .food, repairMult: 1.7, enemyBase: true),
             ],
             gates: [
                 gate(cinGateV, "Vesper", SIMD2(1500, 3600)),
@@ -254,7 +268,8 @@ enum GalaxyBuilder {
             ],
             asteroids:
                 field(SIMD2(-2500, 1800), 24, 580, 5...15) +
-                field(SIMD2(2700, -2200), 18, 480, 4...13),
+                field(SIMD2(2700, -2200), 18, 480, 4...13) +
+                field(cinRaider, 14, 420, 4...12),
             planets: [
                 planet("Cinder", SIMD2(800, -600), 170,
                        (0.7, 0.2, 0.12), atmo: (0.9, 0.3, 0.15), gas: false,
@@ -270,6 +285,8 @@ enum GalaxyBuilder {
                 lane("Lane · Ashport ↔ Ironreach Gate", [cinAsh, cinGateI], rings: 7),
                 lane("Lane · Ashport ↔ Umbra Gate", [cinAsh, cinGateU], rings: 7),
                 lane("Lane · Ember ↔ Umbra Gate", [cinEmber, cinGateU], rings: 5),
+                // Smuggler spur — not on the legal spine
+                lane("Spur · Ember ↔ Raider's Scar", [cinEmber, cinRaider], rings: 5),
             ],
             wrecks: [],
             star: SystemStar(id: UUID(), position: SIMD2(3400, -3000), radius: 190,
@@ -337,6 +354,7 @@ enum GalaxyBuilder {
         // ========== NYX ==========
         let nyxDock = SIMD2<Float>(100, -80)
         let nyxBuoy = SIMD2<Float>(-2800, -2600)
+        let nyxCorsair = SIMD2<Float>(3200, -3200)
         let nyxGateV = SIMD2<Float>(3800, 600)
         let nyxGateA = SIMD2<Float>(-1600, -3800)
         let nyxGateU = SIMD2<Float>(2500, 3600)
@@ -344,12 +362,15 @@ enum GalaxyBuilder {
 
         systems["Nyx"] = StarSystem(
             name: "Nyx", displayName: "Nyx System",
-            blurb: "Dim stars. Long freelane runs through the dark.",
+            blurb: "Dim stars. Long freelane runs through the dark. Corsairs hunt the edges.",
             stations: [
                 makeStation("Eclipse Dock", nyxDock, "Independent",
                             "Deep-range freeport.", .electronics, .scrap, .food),
                 makeStation("Shadow Buoy", nyxBuoy, "Independent",
                             "Nav buoy. Thin supplies.", .scrap, .scrap, .luxury),
+                makeStation("Mute Corsair", nyxCorsair, "Corsairs",
+                            "Silent pirate bastion. Comms dead, guns loud.",
+                            .weapons, .luxury, .medical, repairMult: 1.55, enemyBase: true),
             ],
             gates: [
                 gate(nyxGateV, "Vesper", SIMD2(-1800, -3400)),
@@ -361,7 +382,8 @@ enum GalaxyBuilder {
                          name: "Unstable Rift"),
             ],
             asteroids: field(SIMD2(1800, -1500), 20, 500, 4...12) + field(SIMD2(-2200, 2200), 16, 400, 3...10)
-                + field(SIMD2(-3800, -3400), 12, 350, 2...8),
+                + field(SIMD2(-3800, -3400), 12, 350, 2...8)
+                + field(nyxCorsair, 12, 380, 3...10),
             planets: [
                 planet("Nyx", SIMD2(-500, 300), 140,
                        (0.15, 0.12, 0.28), atmo: (0.25, 0.2, 0.45), gas: false,
@@ -380,6 +402,7 @@ enum GalaxyBuilder {
                 lane("Lane · Eclipse ↔ Azurel Gate", [nyxDock, nyxGateA], rings: 7),
                 lane("Lane · Eclipse ↔ Umbra Gate", [nyxDock, nyxGateU], rings: 7),
                 lane("Lane · Eclipse ↔ Drift Gate", [nyxDock, nyxGateD], rings: 7),
+                lane("Spur · Buoy ↔ Mute Corsair", [nyxBuoy, nyxCorsair], rings: 5),
             ],
             wrecks: [],
             star: SystemStar(id: UUID(), position: SIMD2(-3400, 3000), radius: 140,
@@ -440,18 +463,22 @@ enum GalaxyBuilder {
         // ========== DRIFT ==========
         let drfHaven = SIMD2<Float>(0, 0)
         let drfRest = SIMD2<Float>(3600, -2800)
+        let drfHullbreaker = SIMD2<Float>(-3400, -2800)
         let drfGateI = SIMD2<Float>(-600, -4000)
         let drfGateN = SIMD2<Float>(3800, 800)
         let drfGateK = SIMD2<Float>(-3600, 2000)
 
         systems["Drift"] = StarSystem(
             name: "Drift", displayName: "Drift Belt",
-            blurb: "A shattered world's bones. Lanes thread the rock fields.",
+            blurb: "A shattered world's bones. Lanes thread the rock fields. Hullbreakers scrap ships in the dark.",
             stations: [
                 makeStation("Belt Haven", drfHaven, "Prospector's Union",
                             "Hollowed rock station. Ore floods markets.", .ore, .ore, .medical),
                 makeStation("Prospector's Rest", drfRest, "Prospector's Union",
                             "Claim office and spare parts.", .scrap, .ore, .electronics),
+                makeStation("Hullbreaker Yard", drfHullbreaker, "Pirate Clan",
+                            "Scrap-pirate yard. Buy guns, sell hulls, leave fast.",
+                            .scrap, .weapons, .food, repairMult: 1.45, enemyBase: true),
             ],
             gates: [
                 gate(drfGateI, "Ironreach", SIMD2(400, 3800)),
@@ -461,7 +488,8 @@ enum GalaxyBuilder {
             asteroids:
                 field(SIMD2(1500, 1200), 36, 900, 5...16) +
                 field(SIMD2(-2200, -1200), 30, 750, 4...14) +
-                field(SIMD2(500, -3000), 22, 550, 3...12),
+                field(SIMD2(500, -3000), 22, 550, 3...12) +
+                field(drfHullbreaker, 16, 500, 5...14),
             planets: [
                 planet("Shard", SIMD2(-800, 900), 110,
                        (0.5, 0.45, 0.4), atmo: nil, gas: false,
@@ -476,6 +504,7 @@ enum GalaxyBuilder {
                 lane("Lane · Haven ↔ Nyx Gate", [drfHaven, drfGateN], rings: 7),
                 lane("Lane · Haven ↔ Kestrel Gate", [drfHaven, drfGateK], rings: 7),
                 lane("Lane · Rest ↔ Ironreach Gate", [drfRest, drfGateI], rings: 5),
+                lane("Spur · Haven ↔ Hullbreaker", [drfHaven, drfHullbreaker], rings: 6),
             ],
             wrecks: [],
             star: SystemStar(id: UUID(), position: SIMD2(3200, 3400), radius: 150,
@@ -539,25 +568,30 @@ enum GalaxyBuilder {
         // ========== UMBRA ==========
         let umbRing = SIMD2<Float>(80, -40)
         let umbHold = SIMD2<Float>(-3200, 1800)
+        let umbBloodwake = SIMD2<Float>(2800, -2800)
         let umbGateC = SIMD2<Float>(-3600, -1100)
         let umbGateN = SIMD2<Float>(-1100, 3800)
         let umbGateK = SIMD2<Float>(400, -4000)
 
         systems["Umbra"] = StarSystem(
             name: "Umbra", displayName: "Umbra System",
-            blurb: "Where cargo manifests go to die. Shadowed freelanes.",
+            blurb: "Where cargo manifests go to die. Bloodwake Den is the pirate capital of the rim.",
             stations: [
                 makeStation("Black Market Ring", umbRing, "Unaligned",
                             "No questions. High prices both ways.", .luxury, .weapons, .food, repairMult: 1.4),
                 makeStation("Quiet Hold", umbHold, "Unaligned",
                             "Sealed warehouse station.", .luxury, .luxury, .medical, repairMult: 1.35),
+                makeStation("Bloodwake Den", umbBloodwake, "Pirate Clan",
+                            "Pirate capital of the rim. Dock only if they know your name.",
+                            .weapons, .weapons, .food, repairMult: 1.5, enemyBase: true),
             ],
             gates: [
                 gate(umbGateC, "Cinder", SIMD2(2000, 3400)),
                 gate(umbGateN, "Nyx", SIMD2(2400, 3400)),
                 gate(umbGateK, "Kestrel", SIMD2(2800, 3400)),
             ],
-            asteroids: field(SIMD2(2000, 2200), 18, 450, 4...12) + field(SIMD2(-1400, -2500), 14, 400, 3...10),
+            asteroids: field(SIMD2(2000, 2200), 18, 450, 4...12) + field(SIMD2(-1400, -2500), 14, 400, 3...10)
+                + field(umbBloodwake, 14, 400, 4...11),
             planets: [
                 planet("Umbra", SIMD2(600, 400), 170,
                        (0.35, 0.12, 0.45), atmo: (0.5, 0.2, 0.65), gas: false,
@@ -573,6 +607,7 @@ enum GalaxyBuilder {
                 lane("Lane · Ring ↔ Nyx Gate", [umbRing, umbGateN], rings: 7),
                 lane("Lane · Ring ↔ Kestrel Gate", [umbRing, umbGateK], rings: 7),
                 lane("Lane · Hold ↔ Nyx Gate", [umbHold, umbGateN], rings: 5),
+                lane("Spur · Ring ↔ Bloodwake", [umbRing, umbBloodwake], rings: 6),
             ],
             wrecks: [],
             star: SystemStar(id: UUID(), position: SIMD2(3400, -3000), radius: 160,
@@ -963,7 +998,8 @@ enum GalaxyBuilder {
     private static func makeStation(
         _ name: String, _ pos: SIMD2<Float>, _ faction: String, _ desc: String,
         _ specialty: Commodity, _ surplus: Commodity, _ deficit: Commodity,
-        repairMult: Float = 1.0
+        repairMult: Float = 1.0,
+        enemyBase: Bool = false
     ) -> Station {
         var market: [Commodity: MarketOffer] = [:]
         for c in Commodity.allCases {
@@ -980,26 +1016,46 @@ enum GalaxyBuilder {
                 sell = Int(Float(c.basePrice) * 1.9)
                 stock = Int.random(in: 5...25)
             }
+            // Pirate dens: cheap weapons/scrap, expensive food/medical
+            if enemyBase {
+                if c == .weapons || c == .scrap {
+                    buy = Int(Float(c.basePrice) * 0.55)
+                    sell = Int(Float(c.basePrice) * 0.85)
+                    stock = Int.random(in: 70...150)
+                }
+                if c == .food || c == .medical {
+                    buy = Int(Float(c.basePrice) * 1.4)
+                    sell = Int(Float(c.basePrice) * 1.85)
+                    stock = Int.random(in: 8...30)
+                }
+            }
             let noise = Float.random(in: 0.9...1.1)
             buy = max(1, Int(Float(buy) * noise))
             sell = max(buy + 1, Int(Float(sell) * noise))
             market[c] = MarketOffer(buyPrice: buy, sellPrice: sell, stock: stock)
         }
-        let defense = defenseProfile(for: faction)
+        let defense = defenseProfile(for: faction, enemyBase: enemyBase)
+        let radius: Float = enemyBase ? 110 : 95
         return Station(
-            id: UUID(), name: name, position: pos, radius: 95,
+            id: UUID(), name: name, position: pos, radius: radius,
             market: market, repairCostPerHull: max(1, Int(4 * repairMult)),
             faction: faction, description: desc,
             defenseRange: defense.range,
             turretDamage: defense.damage,
             turretCooldownMax: defense.cooldown,
             turretCooldown: 0,
-            turretAim: 0
+            turretAim: 0,
+            isEnemyBase: enemyBase
         )
     }
 
     /// Station defense stats by faction flavor.
-    private static func defenseProfile(for faction: String) -> (range: Float, damage: Float, cooldown: Float) {
+    private static func defenseProfile(
+        for faction: String, enemyBase: Bool = false
+    ) -> (range: Float, damage: Float, cooldown: Float) {
+        if enemyBase || faction == "Pirate Clan" || faction == "Corsairs" {
+            return (780, 26, 0.26)   // pirate dens — heavy turrets
+        }
         switch faction {
         case "Militia":
             return (720, 24, 0.28)   // heavy guns
@@ -1134,6 +1190,19 @@ enum GalaxyBuilder {
             placeOnFreelane(&ship, in: system)
             ships.append(ship)
         }
+        // Enemy base garrison — dens always have a pirate screen
+        for st in system.stations where st.isEnemyBase {
+            let garrison = st.isPirateBase ? Int.random(in: 3...5) : 2
+            for k in 0..<garrison {
+                let a = Float(k) * (2 * .pi / Float(garrison)) + Float.random(in: -0.2...0.2)
+                let dist = Float.random(in: 220...520)
+                ships.append(makeNPC(faction: .pirate, at: st.position + angleToVector(a) * dist))
+            }
+            // Occasional capital sitting on the den
+            if Float.random(in: 0...1) < 0.35 {
+                ships.append(makePirateCapital(at: st.position + angleToVector(Float.random(in: 0...(2 * .pi))) * 380))
+            }
+        }
         return ships
     }
 
@@ -1174,8 +1243,23 @@ enum GalaxyBuilder {
     static func makeNPC(faction: Faction, at pos: SIMD2<Float>) -> NPCShip {
         switch faction {
         case .pirate:
-            let heavy = Float.random(in: 0...1) < 0.28
-            if heavy {
+            let roll = Float.random(in: 0...1)
+            if roll < 0.18 {
+                // Missile bomber
+                return NPCShip(
+                    id: UUID(), position: pos, velocity: .zero,
+                    angle: Float.random(in: 0...(2 * .pi)),
+                    hull: Float.random(in: 90...120), maxHull: 120,
+                    shield: Float.random(in: 30...50), maxShield: 50,
+                    faction: .pirate, hullType: .pirateBomber,
+                    targetID: nil, fireCooldown: 0, aiTimer: 0,
+                    dropCredits: Int.random(in: 180...380), dropScrap: Int.random(in: 3...7),
+                    name: ["Bombard", "Rack Hulk", "Missile Maw", "Torpedo Rook"].randomElement()!,
+                    speed: Float.random(in: 120...155), damage: Float.random(in: 10...14), radius: 22,
+                    missileAmmo: Int.random(in: 6...10)
+                )
+            }
+            if roll < 0.45 {
                 return NPCShip(
                     id: UUID(), position: pos, velocity: .zero,
                     angle: Float.random(in: 0...(2 * .pi)),
@@ -1209,8 +1293,21 @@ enum GalaxyBuilder {
             return makeCargoShip(at: pos)
 
         case .police:
-            let interceptor = Float.random(in: 0...1) < 0.4
-            if interceptor {
+            let roll = Float.random(in: 0...1)
+            if roll < 0.25 {
+                return NPCShip(
+                    id: UUID(), position: pos, velocity: .zero,
+                    angle: Float.random(in: 0...(2 * .pi)),
+                    hull: 130, maxHull: 130, shield: 85, maxShield: 85,
+                    faction: .police, hullType: .policeEnforcer,
+                    targetID: nil, fireCooldown: 0, aiTimer: 0,
+                    dropCredits: 80, dropScrap: 2,
+                    name: ["Enforcer", "Riot Cruiser", "Badge Heavy", "Law Hammer"].randomElement()!,
+                    speed: 175, damage: 18, radius: 19,
+                    missileAmmo: Int.random(in: 3...6)
+                )
+            }
+            if roll < 0.55 {
                 return NPCShip(
                     id: UUID(), position: pos, velocity: .zero,
                     angle: Float.random(in: 0...(2 * .pi)),
@@ -1218,7 +1315,7 @@ enum GalaxyBuilder {
                     faction: .police, hullType: .interceptor,
                     targetID: nil, fireCooldown: 0, aiTimer: 0,
                     dropCredits: 45, dropScrap: 1,
-                    name: "Interceptor",
+                    name: ["Interceptor", "Needle", "Pursuit"].randomElement()!,
                     speed: 250, damage: 14, radius: 14,
                     missileAmmo: Int.random(in: 2...4)
                 )
@@ -1229,26 +1326,41 @@ enum GalaxyBuilder {
                 hull: 90, maxHull: 90, shield: 60, maxShield: 60,
                 faction: .police, hullType: .patrol,
                 targetID: nil, fireCooldown: 0, aiTimer: 0,
-                dropCredits: 50, dropScrap: 1, name: "Patrol Cruiser",
+                dropCredits: 50, dropScrap: 1,
+                name: ["Patrol Cruiser", "Watchdog", "Lane Cop"].randomElement()!,
                 speed: 200, damage: 12, radius: 17,
                 missileAmmo: Int.random(in: 1...3)
             )
 
         case .militia:
+            if Float.random(in: 0...1) < 0.35 {
+                return NPCShip(
+                    id: UUID(), position: pos, velocity: .zero,
+                    angle: Float.random(in: 0...(2 * .pi)),
+                    hull: 120, maxHull: 120, shield: 70, maxShield: 70,
+                    faction: .militia, hullType: .militiaFrigate,
+                    targetID: nil, fireCooldown: 0, aiTimer: 0,
+                    dropCredits: 70, dropScrap: 2,
+                    name: ["Militia Frigate", "Frontier Guard", "Kestrel Wing"].randomElement()!,
+                    speed: 165, damage: 15, radius: 18,
+                    missileAmmo: Int.random(in: 2...5)
+                )
+            }
             return NPCShip(
                 id: UUID(), position: pos, velocity: .zero,
                 angle: Float.random(in: 0...(2 * .pi)),
                 hull: 80, maxHull: 80, shield: 50, maxShield: 50,
                 faction: .militia, hullType: .militiaCutter,
                 targetID: nil, fireCooldown: 0, aiTimer: 0,
-                dropCredits: 40, dropScrap: 1, name: "Militia Cutter",
+                dropCredits: 40, dropScrap: 1,
+                name: ["Militia Cutter", "Border Skiff", "Patrol Boat"].randomElement()!,
                 speed: 190, damage: 10, radius: 15,
                 missileAmmo: Int.random(in: 1...3)
             )
 
         case .alien:
-            let heavy = Float.random(in: 0...1) < 0.35
-            if heavy {
+            let roll = Float.random(in: 0...1)
+            if roll < 0.28 {
                 return NPCShip(
                     id: UUID(), position: pos, velocity: .zero,
                     angle: Float.random(in: 0...(2 * .pi)),
@@ -1260,6 +1372,20 @@ enum GalaxyBuilder {
                     name: ["Vael Warden", "Spire Guard", "Lattice Drake", "Resonant"].randomElement()!,
                     speed: Float.random(in: 160...200), damage: Float.random(in: 16...22), radius: 22,
                     missileAmmo: Int.random(in: 4...7)
+                )
+            }
+            if roll < 0.55 {
+                return NPCShip(
+                    id: UUID(), position: pos, velocity: .zero,
+                    angle: Float.random(in: 0...(2 * .pi)),
+                    hull: Float.random(in: 75...105), maxHull: 105,
+                    shield: Float.random(in: 55...80), maxShield: 80,
+                    faction: .alien, hullType: .alienStalker,
+                    targetID: nil, fireCooldown: 0, aiTimer: 0,
+                    dropCredits: Int.random(in: 200...400), dropScrap: Int.random(in: 3...7),
+                    name: ["Vael Stalker", "Phase Hunter", "Silent Spine", "Echo Fang"].randomElement()!,
+                    speed: Float.random(in: 195...245), damage: Float.random(in: 14...19), radius: 17,
+                    missileAmmo: Int.random(in: 3...5)
                 )
             }
             return NPCShip(
@@ -1419,11 +1545,8 @@ enum GalaxyBuilder {
 
     static func generateMissions(station: Station, system: String) -> [Mission] {
         var list: [Mission] = []
-        let dirtyStation = station.faction == "Unaligned"
-            || station.name.localizedCaseInsensitiveContains("Black Market")
-            || station.name.localizedCaseInsensitiveContains("Quiet Hold")
-            || station.name.localizedCaseInsensitiveContains("Night Market")
-            || system == "Umbra"
+        let dirtyStation = station.isOutlawDock || system == "Umbra"
+        let pirateDen = station.isPirateBase || station.isEnemyBase
         let militiaStation = station.faction == "Militia" || system == "Kestrel"
 
         let bountyCount = Int.random(in: 2...6)
@@ -1534,9 +1657,9 @@ enum GalaxyBuilder {
             ))
         }
 
-        // Pirate career: raid a freelane (dirty docks / Umbra / high-risk systems)
-        if dirtyStation || system == "Cinder" || system == "Nyx",
-           Float.random(in: 0...1) < 0.7 {
+        // Pirate career: raid a freelane (dirty docks / dens / high-risk systems)
+        if dirtyStation || pirateDen || system == "Cinder" || system == "Nyx",
+           Float.random(in: 0...1) < (pirateDen ? 0.95 : 0.7) {
             let laneNames = [
                 "Core Spine", "Rim Haul", "Ash Corridor", "Night Run",
                 "Ore Ribbon", "Shadow Lane", "Bulk Path", "Helios Arc"
@@ -1548,11 +1671,39 @@ enum GalaxyBuilder {
                 id: UUID(), title: "Raid: \(lane)",
                 description: "Hit \(need) freighters on \(lane) freelanes in \(raidSys). You are the ambush — law will answer.",
                 kind: .freelaneRaid(laneName: lane, system: raidSys, freightersNeeded: need),
-                reward: 1_200 + need * 450,
+                reward: 1_200 + need * 450 + (pirateDen ? 300 : 0),
                 progress: 0, target: need,
                 completed: false, offeredAtStation: station.name, offeredAtSystem: system,
                 isDirty: true
             ))
+        }
+
+        // Pirate den: bounty on law patrols (police / militia)
+        if pirateDen {
+            let lawCount = Int.random(in: 2...4)
+            list.append(Mission(
+                id: UUID(), title: "Bleed the Badge",
+                description: "Destroy \(lawCount) police or militia ships. The den wants the lanes quiet for raiders.",
+                kind: .bounty(targetFaction: .police, count: lawCount),
+                reward: 900 + lawCount * 280, progress: 0, target: lawCount,
+                completed: false, offeredAtStation: station.name, offeredAtSystem: system,
+                isDirty: true,
+                requiresScan: false
+            ))
+            // Optional: hit a rival den in another system
+            let rivals = enemyBaseCatalog
+                .filter { $0.key != system }
+                .flatMap { sys, names in names.map { (sys, $0) } }
+            if let (rivalSys, rivalName) = rivals.randomElement(), Float.random(in: 0...1) < 0.55 {
+                list.append(Mission(
+                    id: UUID(), title: "Rivals: \(rivalName)",
+                    description: "Scout \(rivalName) in \(rivalSys) and dock to report — or leave a mess. Den politics.",
+                    kind: .explore(system: rivalSys),
+                    reward: 750 + Int.random(in: 0...250), progress: 0, target: 1,
+                    completed: false, offeredAtStation: station.name, offeredAtSystem: system,
+                    isDirty: true
+                ))
+            }
         }
 
         // Probe / survey — plant a beacon at a planet, wreck, or anomaly
@@ -1619,10 +1770,7 @@ enum GalaxyBuilder {
     /// Black-market / dirty pilot special stock (weapons & luxury deep-discount).
     static func applyBlackMarketStock(to station: inout Station, dirty: Bool) {
         guard dirty else { return }
-        let isBlack = station.faction == "Unaligned"
-            || station.name.localizedCaseInsensitiveContains("Black Market")
-            || station.name.localizedCaseInsensitiveContains("Quiet Hold")
-            || station.name.localizedCaseInsensitiveContains("Night Market")
+        let isBlack = station.isOutlawDock
         guard isBlack else { return }
         for c in [Commodity.weapons, Commodity.luxury, Commodity.scrap, Commodity.electronics] {
             guard var offer = station.market[c] else { continue }

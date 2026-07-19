@@ -1,32 +1,36 @@
 # Starlane
 
-**Version 1.0.26**
+**Version 1.0.29**
 
-A Freelancer-style space adventure for macOS. Pilot across the frontier — trade, ride freelanes, race your own ghost, fight pirates, take contracts, chart anomalies, and outfit a ship that can survive Cinder and beyond.
+A Freelancer-style space adventure for macOS. Pilot across the frontier — trade, ride freelanes, race your own ghost, fight pirates, raid dens, take contracts, chart anomalies, and outfit a ship that can survive Cinder and beyond.
 
 See [CHANGELOG.md](CHANGELOG.md) for full release notes. In-app **Help → Starlane Help** and [docs/HELP.md](docs/HELP.md) cover controls and systems.
 
 ## Highlights
 
 - **Large systems** — free flight is a long haul; **freelanes** are the fast path
-- **Freelane time trials** — end-to-end races with personal bests and a gold **ghost** of your best lap
+- **Weapons** — lasers, plasma, pulse array, rail lance (**Q** / **1–4**)
+- **Faction fleets** — pirate / police / militia / Vael hulls with distinct guns and colors
+- **Enemy bases** — pirate dens with turrets, garrisons, den markets, and dirty jobs
+- **Freelane time trials** — personal bests and a gold **ghost** of your best lap
 - **Stations** — trade, missions, outfitter, repairs, investment, Freeport 7 warehouse
-- **Combat** — lasers, plasma, missiles, mines, countermeasures; hull classes change the feel
+- **Combat** — missiles, mines, countermeasures; hull classes change the feel
 - **Contracts** — bounties (scan first), timed cargo, smuggling, escorts, freelane raids, surveys
 - **Space weather** — nebulae, radiation, ion storms, dust, cryo, grav sheer, EM blackout
 - **Exploration** — planets, wrecks, anomalies, lane mystery → Ancient Lane Core
 - **Progression** — reputation/wanted, wingman roles, insurance, freighter loans, achievements
 - **Saves** — 3 slots + autosave on dock in `~/Documents/Starlane/`
 
-## What’s new in 1.0.26
+## What’s new in 1.0.29
 
-- **Time trials** — enter a freelane at either **terminus** for an automatic race to the other end
-- **Personal bests** — times and ghost paths save with your pilot
-- **Ghost runner** — translucent gold ship of your best lap; beat it for the **Ghost Runner** achievement
-- **HUD race strip** — live clock, PB delta (`▲` / `▼`), GHOST indicator
-- **Lane Racer** — set PBs on 5 different freelane runs
+- **Compact NEWS / RADIO ticker** — centered, size-to-text (no full-width bar)
+- **Docs refresh** — README, HELP, VOIDREACH, and in-app Help match dens, weapons, and HUD
 
-Earlier recent releases: **space weather** (1.0.24–25), larger systems & freelane speed (1.0.23), exploration/mystery (1.0.22), wingmen/mines/raids (1.0.21), contracts/insurance/routes (1.0.20). Full history in the changelog.
+**1.0.28** — Pulse Array, Rail Lance, faction Bomber / Enforcer / Frigate / Stalker  
+**1.0.27** — Pirate dens (Bloodwake, Raider’s Scar, Mute Corsair, Hullbreaker)  
+**1.0.26** — Freelane time trials & ghost PB  
+
+Full history: [CHANGELOG.md](CHANGELOG.md).
 
 ## Freelane time trials
 
@@ -61,8 +65,8 @@ Launches in **full screen** by default; the mouse cursor is hidden while the gam
 | Action | Keys |
 |--------|------|
 | Fly | WASD / arrows |
-| Fire | Space |
-| Lasers / plasma | Q or 1 / 2 |
+| Fire primary | Space |
+| Weapon select | **Q** cycle · **1** laser · **2** plasma · **3** pulse · **4** rail |
 | Missile | B |
 | Mine / chaff | J / K |
 | Target | T / Tab |
@@ -85,16 +89,17 @@ Full control list: **Settings → Controls…** or **Help → Starlane Help**.
 
 **Outer sector:** Voidreach (hidden wormhole from Nyx) — see [docs/VOIDREACH.md](docs/VOIDREACH.md)
 
+**Pirate dens (red on map):** Bloodwake Den (Umbra), Raider’s Scar (Cinder), Mute Corsair (Nyx), Hullbreaker Yard (Drift)
+
 ## Project layout
 
 | Path | Purpose |
 |------|---------|
 | `Sources/Starlane/` | Game source (Swift / AppKit) |
-| `docs/HELP.md` | Player help (also bundled in the app) |
-| `docs/IDEAS.md` | Original feature checklist (shipped) |
-| `docs/IDEAS_NEXT.md` | Further design ideas |
+| `docs/HELP.md` | Player help (mirrored in-app) |
 | `docs/VOIDREACH.md` | Outer sector notes |
 | `CHANGELOG.md` | Version history |
+| `AppInfo.plist` | Bundle version (`CFBundleShortVersionString`) |
 | `build-app.sh` | Release build → `~/Applications/Starlane.app` |
 
 ## License / credit

@@ -1,6 +1,6 @@
-# Voidreach — Outer Sector Guide (Starlane 1.0.11+)
+# Voidreach — Outer Sector Guide
 
-Current game version: **1.0.25**. Hidden outer sector reachable only via a wormhole in Nyx. Home of the Vael aliens, alien bases, purchasable alien tech, and hard space weather (radiation, ion storms, EM blackout).
+**Starlane 1.0.29** — Hidden outer sector reachable only via a wormhole in Nyx. Home of the Vael aliens, alien bases, purchasable alien tech, and hard space weather (radiation, ion storms, EM blackout).
 
 ---
 
@@ -19,11 +19,13 @@ Current game version: **1.0.25**. Hidden outer sector reachable only via a wormh
 
 | Content | Details |
 | ------- | ------- |
-| **Vael aliens** | Skimmers & wardens — hostile, unique art, rich loot |
-| **Spire of Vael** | Main alien base (Vael Collective); sells tech |
+| **Vael aliens** | Skimmers, **Stalkers**, & Wardens — hostile, unique art, faction-colored teal bolts, rich loot |
+| **Spire of Vael** | Main alien base (Vael Collective); sells tech; Outfit list is scrollable |
 | **Resonance Anchorage** | Second base; heavy defenses |
 | **Alien corridors** | Freelane-style rings between spires / rift |
 | **Chart bonus** | First visit +2000 cr + achievement **Beyond the Veil** |
+
+Human freighters and pirate dens do not spawn here — Vael dominate open space.
 
 ---
 
@@ -31,14 +33,22 @@ Current game version: **1.0.25**. Hidden outer sector reachable only via a wormh
 
 | Tech | Cost | Effect |
 | ---- | ---- | ------ |
-| Vael Plasma Locus | 8500 cr | +35% laser damage |
+| Vael Plasma Locus | 8500 cr | +35% laser (and other DE) damage |
 | Void Shroud | 7800 cr | +30 max shield, +20% regen |
 | Gravitic Drive | 7200 cr | +20% thrust & top speed |
 | Crystal Lattice Hull | 8000 cr | +40 max hull |
-| Phase Needle Array | 9000 cr | Faster laser fire rate |
+| Phase Needle Array | 9000 cr | Faster fire rate (laser / plasma / pulse / rail) |
 | Neural Tractor | 5500 cr | +80% salvage tractor range |
 
-Open the **Outfit** tab at Spire of Vael or Resonance Anchorage — alien tech appears as **✦** rows. Enter to purchase and install.
+Open the **Outfit** tab at Spire of Vael or Resonance Anchorage — alien tech appears as **✦** rows after the base services list. Use **↑/↓** to scroll; Enter to purchase and install.
+
+---
+
+## Combat notes
+
+- Vael fire **plasma** and **pulse** patterns (teal bolts) plus occasional missiles
+- Wardens are tanky multi-shot; Stalkers are mid-weight hunters; Skimmers are fast
+- Your **Rail Lance** (**4**) and **Pulse Array** (**3**) are strong options if energy plant is upgraded
 
 ---
 
@@ -60,6 +70,12 @@ Open the **Outfit** tab at Spire of Vael or Resonance Anchorage — alien tech a
 
 ---
 
+## Space weather
+
+Voidreach often has harsh zones (radiation, ion, EM). Watch the top-center weather strip for live rates. Freelane corridors help cross the system safely.
+
+---
+
 ## Lore notes
 
 - Beyond charted space; the Vael built cities in the dark.
@@ -69,8 +85,7 @@ Open the **Outfit** tab at Spire of Vael or Resonance Anchorage — alien tech a
 
 ---
 
-## Related files
+## Related
 
-- `docs/IDEAS.md` — checklist item 23 (implemented)
-- `docs/IDEAS_NEXT.md` — further mystery / exploration ideas
-- `CHANGELOG.md` — [1.0.11] notes
+- [docs/HELP.md](HELP.md) — full controls and systems
+- [CHANGELOG.md](../CHANGELOG.md) — release history (Voidreach since 1.0.11; weather 1.0.24+)

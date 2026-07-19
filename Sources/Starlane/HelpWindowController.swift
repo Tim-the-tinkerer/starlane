@@ -49,20 +49,21 @@ final class HelpWindowController: NSWindowController {
     required init?(coder: NSCoder) { nil }
 
     private static let helpText = """
-    STARLANE  1.0.26
+    STARLANE  1.0.29
     A Freelancer-style space adventure
 
     STORY
     The corporate wars left the frontier open. You are an independent
     pilot with a light freighter, a laser battery, and a debt that will
-    not wait. Trade between systems, take contracts, hunt pirates, and
-    build a ship that can survive the Cinder lanes.
+    not wait. Trade between systems, take contracts, hunt pirates, raid
+    dens, and build a ship that can survive the Cinder lanes.
 
     CONTROLS
     Turn ............... A/D or ←/→
     Thrust / Brake ..... W/S or ↑/↓
-    Fire primary ....... Space (lasers or plasma — uses energy)
-    Switch lasers/plasma Q  or  1 lasers / 2 plasma
+    Fire primary ....... Space (laser / plasma / pulse / rail — energy)
+    Switch weapon ...... Q cycle · 1 laser · 2 plasma · 3 pulse · 4 rail
+                         Pulse = rapid twin bolts · Rail = long heavy slug
     Fire missile ....... B (auto-lock hostiles within 520m; 10 max)
     Target hostiles .... T or Tab
     Nav waypoint ....... V or N (cycle stations, gates, missions)
@@ -83,7 +84,7 @@ final class HelpWindowController: NSWindowController {
     Freelane boost ..... L (Ancient Lane Core — mystery reward)
     Trade route pin .... U (flight) · Galaxy map: pick sell station + U
     Wingman roles ...... Outfit −/+ Gunner / Scout / Tug · painted like you
-    Freelane raids ..... Dirty docks — hit freighters; law responds
+    Freelane raids ..... Dirty docks / dens — hit freighters; law responds
     Anomalies .......... Nyx/Umbra/Drift/Cinder — F/R to interact
     Lane mystery ....... Echoes: Nyx → Umbra → Drift → Ancient Lane Core
     Survey probes ...... Missions board — R plant beacon, dock to report
@@ -98,6 +99,21 @@ final class HelpWindowController: NSWindowController {
     Quit ............... ⌘Q
     Fullscreen cursor .. Hidden while Starlane is key in full screen
 
+    FACTION FLEETS
+    Pirates ............ Raider / Gunship / Bomber (missile racks)
+    Police ............. Patrol / Interceptor / Enforcer (rail)
+    Militia ............ Cutter / Frigate
+    Vael ............... Skimmer / Stalker / Warden (teal plasma)
+    Bolts are faction-colored — red, blue, green, teal.
+
+    PIRATE DENS (red on map)
+    Bloodwake Den ...... Umbra (Pirate Clan capital)
+    Raider’s Scar ...... Cinder
+    Mute Corsair ....... Nyx
+    Hullbreaker Yard ... Drift
+    Turrets fire on law and clean pilots. Dock if dirty, pirate rep ≥ 15,
+    or under protection. Den markets sell cheap guns; dirty jobs available.
+
     SPACE WEATHER (fly into colored regions — HUD strip shows effects)
     Nebula ............. Sensors degraded
     Radiation .......... Continuous shield/hull damage
@@ -107,10 +123,14 @@ final class HelpWindowController: NSWindowController {
     Grav sheer ......... Vector pull off course
     EM blackout ........ Scanners offline
 
+    HUD
+    Top center ......... Campaign / missions · weather · race · compass (stacked)
+    Bottom ............. Compact NEWS / RADIO tickers (centered, not full-width)
+
     CONTRACTS
     Timed cargo ........ ⏱ Live Food/Medical runs — spoil if late
     Smuggling .......... 🔒 Hidden hold; law scan seizes goods + militia heat
-    Dirty Umbra jobs ... High pay; scanned while dirty = heat
+    Dirty Umbra/den jobs High pay; scanned while dirty = heat
     Bounties ........... Must scan (I) pirates before kills count
     Freelane raids ..... Hit freighters on lanes; law spawns
     Survey probes ...... Beacon at planet/wreck/anomaly, dock to report
@@ -123,7 +143,7 @@ final class HelpWindowController: NSWindowController {
     FACTION HOME BASES
     Kestrel / Militia .. Wingman discounts; better defense retainers
     Umbra protection ... Pay pirates to leave you alone (Outfitter)
-    Max heat (★★★★★) ... Law docks refuse — use Umbra / black markets
+    Max heat (★★★★★) ... Law docks refuse — use Umbra / dens / black markets
 
     STORY (light campaign)
     1. Freelane License — ride a freelane, dock Freeport 7
@@ -134,7 +154,7 @@ final class HelpWindowController: NSWindowController {
 
     DOCKED STATION
     1–6 or ←/→ ......... Switch tabs (Status, Trade, Warehouse, Missions, Outfit, Undock)
-    ↑/↓ ................ Select commodity / mission / upgrade
+    ↑/↓ ................ Select commodity / mission / upgrade (Outfit scrolls)
     − / + .............. Change trade quantity (or cycle paint / ship hull / wingman)
     Enter .............. Buy / Accept / Upgrade / Undock
     F .................. Sell (Trade) / withdraw warehouse / shields (Status)
@@ -155,7 +175,7 @@ final class HelpWindowController: NSWindowController {
     Kill traders ........ Wanted heat up; pirates get friendlier
     Kill police/militia . Big heat spike — manhunt
     Clear warrants ...... Dock a Militia station → Outfit “Clear Wanted” or Status Enter
-    Dirty pilots ........ Black-market docks open special stock (Umbra, Night Market…)
+    Dirty pilots ........ Black-market docks open special stock (Umbra, dens, Night Market…)
 
     SHIPS (Outfitter)
     Hybrid Fighter ...... Balanced starter
@@ -172,5 +192,6 @@ final class HelpWindowController: NSWindowController {
     TIP
     Systems are large — freelanes are the intended long-range transit.
     Steer around radiation belts when you can; HUD shows live weather rates.
+    Older saves load safely (missing fields get defaults).
     """
 }

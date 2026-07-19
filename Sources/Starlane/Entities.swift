@@ -64,19 +64,93 @@ struct ShipStats: Codable {
     var plasmaDamage: Float = 28
     var plasmaCooldown: Float = 0.55
     var plasmaEnergyCost: Float = 28
+    /// Pulse array — rapid low-power bolts.
+    var pulseDamage: Float = 6
+    var pulseCooldown: Float = 0.09
+    var pulseEnergyCost: Float = 3.5
+    /// Rail lance — slow, long-range heavy slug.
+    var railDamage: Float = 48
+    var railCooldown: Float = 0.95
+    var railEnergyCost: Float = 42
     /// Energy cost per point of shield restored.
     var shieldEnergyPerPoint: Float = 0.85
+
+    /// Defaults for every field so older saves (missing pulse/rail, etc.) still decode.
+    init(
+        maxHull: Float = 100, maxShield: Float = 80, cargoCapacity: Float = 40,
+        thrust: Float = 320, turnRate: Float = 2.6, maxSpeed: Float = 360,
+        laserDamage: Float = 12, laserCooldown: Float = 0.22, shieldRegen: Float = 8,
+        maxEnergy: Float = 100, energyRegen: Float = 20, laserEnergyCost: Float = 8,
+        plasmaDamage: Float = 28, plasmaCooldown: Float = 0.55, plasmaEnergyCost: Float = 28,
+        pulseDamage: Float = 6, pulseCooldown: Float = 0.09, pulseEnergyCost: Float = 3.5,
+        railDamage: Float = 48, railCooldown: Float = 0.95, railEnergyCost: Float = 42,
+        shieldEnergyPerPoint: Float = 0.85
+    ) {
+        self.maxHull = maxHull
+        self.maxShield = maxShield
+        self.cargoCapacity = cargoCapacity
+        self.thrust = thrust
+        self.turnRate = turnRate
+        self.maxSpeed = maxSpeed
+        self.laserDamage = laserDamage
+        self.laserCooldown = laserCooldown
+        self.shieldRegen = shieldRegen
+        self.maxEnergy = maxEnergy
+        self.energyRegen = energyRegen
+        self.laserEnergyCost = laserEnergyCost
+        self.plasmaDamage = plasmaDamage
+        self.plasmaCooldown = plasmaCooldown
+        self.plasmaEnergyCost = plasmaEnergyCost
+        self.pulseDamage = pulseDamage
+        self.pulseCooldown = pulseCooldown
+        self.pulseEnergyCost = pulseEnergyCost
+        self.railDamage = railDamage
+        self.railCooldown = railCooldown
+        self.railEnergyCost = railEnergyCost
+        self.shieldEnergyPerPoint = shieldEnergyPerPoint
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = ShipStats() // defaults
+        maxHull = try c.decodeIfPresent(Float.self, forKey: .maxHull) ?? d.maxHull
+        maxShield = try c.decodeIfPresent(Float.self, forKey: .maxShield) ?? d.maxShield
+        cargoCapacity = try c.decodeIfPresent(Float.self, forKey: .cargoCapacity) ?? d.cargoCapacity
+        thrust = try c.decodeIfPresent(Float.self, forKey: .thrust) ?? d.thrust
+        turnRate = try c.decodeIfPresent(Float.self, forKey: .turnRate) ?? d.turnRate
+        maxSpeed = try c.decodeIfPresent(Float.self, forKey: .maxSpeed) ?? d.maxSpeed
+        laserDamage = try c.decodeIfPresent(Float.self, forKey: .laserDamage) ?? d.laserDamage
+        laserCooldown = try c.decodeIfPresent(Float.self, forKey: .laserCooldown) ?? d.laserCooldown
+        shieldRegen = try c.decodeIfPresent(Float.self, forKey: .shieldRegen) ?? d.shieldRegen
+        maxEnergy = try c.decodeIfPresent(Float.self, forKey: .maxEnergy) ?? d.maxEnergy
+        energyRegen = try c.decodeIfPresent(Float.self, forKey: .energyRegen) ?? d.energyRegen
+        laserEnergyCost = try c.decodeIfPresent(Float.self, forKey: .laserEnergyCost) ?? d.laserEnergyCost
+        plasmaDamage = try c.decodeIfPresent(Float.self, forKey: .plasmaDamage) ?? d.plasmaDamage
+        plasmaCooldown = try c.decodeIfPresent(Float.self, forKey: .plasmaCooldown) ?? d.plasmaCooldown
+        plasmaEnergyCost = try c.decodeIfPresent(Float.self, forKey: .plasmaEnergyCost) ?? d.plasmaEnergyCost
+        pulseDamage = try c.decodeIfPresent(Float.self, forKey: .pulseDamage) ?? d.pulseDamage
+        pulseCooldown = try c.decodeIfPresent(Float.self, forKey: .pulseCooldown) ?? d.pulseCooldown
+        pulseEnergyCost = try c.decodeIfPresent(Float.self, forKey: .pulseEnergyCost) ?? d.pulseEnergyCost
+        railDamage = try c.decodeIfPresent(Float.self, forKey: .railDamage) ?? d.railDamage
+        railCooldown = try c.decodeIfPresent(Float.self, forKey: .railCooldown) ?? d.railCooldown
+        railEnergyCost = try c.decodeIfPresent(Float.self, forKey: .railEnergyCost) ?? d.railEnergyCost
+        shieldEnergyPerPoint = try c.decodeIfPresent(Float.self, forKey: .shieldEnergyPerPoint) ?? d.shieldEnergyPerPoint
+    }
 }
 
-/// Primary directed-energy mode (Space). Missiles are separate (Q).
+/// Primary directed-energy mode (Space / Q). Missiles are separate (B).
 enum WeaponMode: String, Codable, CaseIterable {
     case laser
     case plasma
+    case pulse
+    case rail
 
     var displayName: String {
         switch self {
         case .laser: return "Lasers"
         case .plasma: return "Plasma Cannon"
+        case .pulse: return "Pulse Array"
+        case .rail: return "Rail Lance"
         }
     }
 
@@ -84,7 +158,40 @@ enum WeaponMode: String, Codable, CaseIterable {
         switch self {
         case .laser: return "LASER"
         case .plasma: return "PLASMA"
+        case .pulse: return "PULSE"
+        case .rail: return "RAIL"
         }
+    }
+
+    /// Key 1–4 selection order.
+    var hotkeyIndex: Int {
+        switch self {
+        case .laser: return 1
+        case .plasma: return 2
+        case .pulse: return 3
+        case .rail: return 4
+        }
+    }
+
+    static func fromHotkey(_ n: Int) -> WeaponMode? {
+        switch n {
+        case 1: return .laser
+        case 2: return .plasma
+        case 3: return .pulse
+        case 4: return .rail
+        default: return nil
+        }
+    }
+
+    /// Unknown future modes fall back to lasers so old clients / bad data still load.
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = WeaponMode(rawValue: raw) ?? .laser
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        try c.encode(rawValue)
     }
 }
 
@@ -894,6 +1001,12 @@ struct Player: Codable {
         stats.plasmaDamage = 26 + Float(weaponLevel - 1) * 10
         stats.plasmaCooldown = max(0.38, 0.58 - Float(weaponLevel - 1) * 0.035)
         stats.plasmaEnergyCost = 26 + Float(weaponLevel - 1) * 2
+        stats.pulseDamage = 6 + Float(weaponLevel - 1) * 2.5
+        stats.pulseCooldown = max(0.055, 0.09 - Float(weaponLevel - 1) * 0.007)
+        stats.pulseEnergyCost = 3.5 + Float(weaponLevel - 1) * 0.25
+        stats.railDamage = 42 + Float(weaponLevel - 1) * 14
+        stats.railCooldown = max(0.65, 0.95 - Float(weaponLevel - 1) * 0.05)
+        stats.railEnergyCost = 40 + Float(weaponLevel - 1) * 3
         stats.shieldEnergyPerPoint = 0.85
 
         // Ship class base profile (applied before blueprints)
@@ -906,6 +1019,8 @@ struct Player: Codable {
             stats.maxShield += 10
             stats.laserDamage *= 0.72
             stats.plasmaDamage *= 0.75
+            stats.pulseDamage *= 0.78
+            stats.railDamage *= 0.8
             stats.thrust *= 0.88
             stats.maxSpeed *= 0.82
             stats.turnRate *= 0.85
@@ -913,7 +1028,10 @@ struct Player: Codable {
         case .interceptor:
             stats.laserDamage *= 1.4
             stats.plasmaDamage *= 1.25
+            stats.pulseDamage *= 1.35
+            stats.railDamage *= 1.2
             stats.laserCooldown = max(0.08, stats.laserCooldown * 0.85)
+            stats.pulseCooldown = max(0.05, stats.pulseCooldown * 0.88)
             stats.thrust *= 1.2
             stats.maxSpeed *= 1.22
             stats.turnRate *= 1.15
@@ -933,11 +1051,15 @@ struct Player: Codable {
         if unlockedBlueprints.contains(.overchargedLasers) {
             stats.laserDamage *= 1.25
             stats.plasmaDamage *= 1.15
+            stats.pulseDamage *= 1.2
+            stats.railDamage *= 1.1
         }
         // Alien / Vael tech
         if unlockedBlueprints.contains(.vaelPlasma) {
             stats.laserDamage *= 1.35
             stats.plasmaDamage *= 1.3
+            stats.pulseDamage *= 1.2
+            stats.railDamage *= 1.25
         }
         if unlockedBlueprints.contains(.voidShroud) {
             stats.maxShield += 30
@@ -951,6 +1073,8 @@ struct Player: Codable {
         if unlockedBlueprints.contains(.phaseNeedle) {
             stats.laserCooldown = max(0.07, stats.laserCooldown * 0.78)
             stats.plasmaCooldown = max(0.32, stats.plasmaCooldown * 0.9)
+            stats.pulseCooldown = max(0.045, stats.pulseCooldown * 0.82)
+            stats.railCooldown = max(0.55, stats.railCooldown * 0.92)
         }
         if unlockedBlueprints.contains(.neuralTractor) {
             // Applied via tractorRangeBonus
@@ -1174,14 +1298,20 @@ enum HullType: String, CaseIterable {
     case containerShip
     case oreBarge
     case courier
-    // Combat
+    // Combat — pirates
     case pirateRaider
     case pirateGunship
+    case pirateBomber
+    // Combat — law
     case patrol
     case interceptor
+    case policeEnforcer
     case militiaCutter
+    case militiaFrigate
+    // Combat — Vael
     case alienSkimmer
     case alienWarden
+    case alienStalker
 
     var isCargo: Bool {
         switch self {
@@ -1202,11 +1332,15 @@ enum HullType: String, CaseIterable {
         case .courier: return "Courier"
         case .pirateRaider: return "Raider"
         case .pirateGunship: return "Gunship"
+        case .pirateBomber: return "Bomber"
         case .patrol: return "Patrol"
         case .interceptor: return "Interceptor"
+        case .policeEnforcer: return "Enforcer"
         case .militiaCutter: return "Cutter"
+        case .militiaFrigate: return "Frigate"
         case .alienSkimmer: return "Vael Skimmer"
         case .alienWarden: return "Vael Warden"
+        case .alienStalker: return "Vael Stalker"
         }
     }
 
@@ -1374,9 +1508,23 @@ struct Station: Identifiable {
     var turretCooldown: Float
     /// Angle of active turret aim (for VFX).
     var turretAim: Float
+    /// Pirate dens / hostile strongholds — turrets fire on law (and on you if not allied).
+    var isEnemyBase: Bool = false
 
     var dockRadius: Float { radius + 55 }
     var hasDefenses: Bool { defenseRange > 0 && turretDamage > 0 }
+    /// Pirate Clan dens and similar outlaw strongholds.
+    var isPirateBase: Bool {
+        isEnemyBase || faction == "Pirate Clan" || faction == "Corsairs"
+    }
+    /// Black-market / outlaw docks that welcome dirty pilots.
+    var isOutlawDock: Bool {
+        isPirateBase
+            || faction == "Unaligned"
+            || name.localizedCaseInsensitiveContains("Black Market")
+            || name.localizedCaseInsensitiveContains("Quiet Hold")
+            || name.localizedCaseInsensitiveContains("Night Market")
+    }
 }
 
 struct JumpGate: Identifiable {
@@ -1428,6 +1576,8 @@ enum ProjectileSource: Equatable {
 enum ProjectileKind: Equatable {
     case laser
     case plasma
+    case pulse
+    case rail
     case missile
     case mine
 }

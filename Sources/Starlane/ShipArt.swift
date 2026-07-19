@@ -7,6 +7,7 @@ enum ShipArt {
         case player
         case pirateRaider
         case pirateGunship
+        case pirateBomber
         case freighter
         case bulkHauler
         case tanker
@@ -15,14 +16,18 @@ enum ShipArt {
         case courier
         case patrol
         case interceptor
+        case policeEnforcer
         case militiaCutter
+        case militiaFrigate
         case alienSkimmer
         case alienWarden
+        case alienStalker
 
         static func from(hullType: HullType) -> Style {
             switch hullType {
             case .pirateRaider: return .pirateRaider
             case .pirateGunship: return .pirateGunship
+            case .pirateBomber: return .pirateBomber
             case .freighter: return .freighter
             case .bulkHauler: return .bulkHauler
             case .tanker: return .tanker
@@ -31,9 +36,12 @@ enum ShipArt {
             case .courier: return .courier
             case .patrol: return .patrol
             case .interceptor: return .interceptor
+            case .policeEnforcer: return .policeEnforcer
             case .militiaCutter: return .militiaCutter
+            case .militiaFrigate: return .militiaFrigate
             case .alienSkimmer: return .alienSkimmer
             case .alienWarden: return .alienWarden
+            case .alienStalker: return .alienStalker
             }
         }
 
@@ -62,6 +70,7 @@ enum ShipArt {
         case .player: drawPlayer(ctx: ctx, accent: paint.accent, time: time, paint: paint)
         case .pirateRaider: drawPirate(ctx: ctx, accent: accent, time: time)
         case .pirateGunship: drawPirateGunship(ctx: ctx, accent: accent, time: time)
+        case .pirateBomber: drawPirateBomber(ctx: ctx, accent: accent, time: time)
         case .freighter: drawTrader(ctx: ctx, accent: accent, time: time)
         case .bulkHauler: drawBulkHauler(ctx: ctx, accent: accent, time: time)
         case .tanker: drawTanker(ctx: ctx, accent: accent, time: time)
@@ -70,9 +79,12 @@ enum ShipArt {
         case .courier: drawCourier(ctx: ctx, accent: accent, time: time)
         case .patrol: drawPolice(ctx: ctx, accent: accent, time: time)
         case .interceptor: drawInterceptor(ctx: ctx, accent: accent, time: time)
+        case .policeEnforcer: drawPoliceEnforcer(ctx: ctx, accent: accent, time: time)
         case .militiaCutter: drawMilitia(ctx: ctx, accent: accent, time: time)
+        case .militiaFrigate: drawMilitiaFrigate(ctx: ctx, accent: accent, time: time)
         case .alienSkimmer: drawAlienSkimmer(ctx: ctx, accent: accent, time: time)
         case .alienWarden: drawAlienWarden(ctx: ctx, accent: accent, time: time)
+        case .alienStalker: drawAlienStalker(ctx: ctx, accent: accent, time: time)
         }
 
         ctx.restoreGState()
@@ -700,6 +712,58 @@ enum ShipArt {
         ctx.fillEllipse(in: CGRect(x: -18.5, y: -3.5, width: 3, height: 2.5))
     }
 
+    // MARK: - Pirate bomber: fat missile barge
+
+    private static func drawPirateBomber(ctx: CGContext, accent: NSColor, time: Float) {
+        let hull = accent
+        let dark = accent.blended(withFraction: 0.55, of: .black) ?? accent
+        let metal = NSColor(calibratedRed: 0.32, green: 0.28, blue: 0.26, alpha: 1)
+        let rack = NSColor(calibratedRed: 0.55, green: 0.2, blue: 0.15, alpha: 1)
+        let engine = NSColor(calibratedRed: 1.0, green: 0.35, blue: 0.12, alpha: 1)
+
+        // Wide stub wings
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: 0, y: 3), CGPoint(x: -6, y: 14), CGPoint(x: -14, y: 13),
+            CGPoint(x: -11, y: 5), CGPoint(x: -4, y: 3.5),
+        ])
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: 0, y: -3), CGPoint(x: -6, y: -14), CGPoint(x: -14, y: -13),
+            CGPoint(x: -11, y: -5), CGPoint(x: -4, y: -3.5),
+        ])
+        // Fat body
+        fillPath(ctx, color: hull, points: [
+            CGPoint(x: 12, y: 0), CGPoint(x: 6, y: 5.5), CGPoint(x: -6, y: 6),
+            CGPoint(x: -15, y: 4), CGPoint(x: -16, y: 0), CGPoint(x: -15, y: -4),
+            CGPoint(x: -6, y: -6), CGPoint(x: 6, y: -5.5),
+        ])
+        // Missile racks under wings
+        fillPath(ctx, color: rack, points: [
+            CGPoint(x: -2, y: 7), CGPoint(x: 8, y: 8.5), CGPoint(x: 8, y: 6.5), CGPoint(x: -2, y: 5.5),
+        ])
+        fillPath(ctx, color: rack, points: [
+            CGPoint(x: -2, y: -7), CGPoint(x: 8, y: -8.5), CGPoint(x: 8, y: -6.5), CGPoint(x: -2, y: -5.5),
+        ])
+        // Nose cannon
+        fillPath(ctx, color: metal, points: [
+            CGPoint(x: 10, y: 1.2), CGPoint(x: 16, y: 1.5), CGPoint(x: 16, y: -1.5), CGPoint(x: 10, y: -1.2),
+        ])
+        // Triple rear thrusters
+        fillPath(ctx, color: metal, points: [
+            CGPoint(x: -14, y: 3.5), CGPoint(x: -19, y: 4), CGPoint(x: -19, y: 1.5), CGPoint(x: -14, y: 1.2),
+        ])
+        fillPath(ctx, color: metal, points: [
+            CGPoint(x: -14, y: -3.5), CGPoint(x: -19, y: -4), CGPoint(x: -19, y: -1.5), CGPoint(x: -14, y: -1.2),
+        ])
+        fillPath(ctx, color: metal, points: [
+            CGPoint(x: -14, y: 1), CGPoint(x: -18.5, y: 1.2), CGPoint(x: -18.5, y: -1.2), CGPoint(x: -14, y: -1),
+        ])
+        let pulse = 0.5 + 0.45 * sin(time * 11)
+        ctx.setFillColor(engine.withAlphaComponent(CGFloat(pulse)).cgColor)
+        ctx.fillEllipse(in: CGRect(x: -20.5, y: 1.8, width: 2.8, height: 2.2))
+        ctx.fillEllipse(in: CGRect(x: -20.5, y: -4, width: 2.8, height: 2.2))
+        ctx.fillEllipse(in: CGRect(x: -20, y: -1, width: 2.4, height: 2))
+    }
+
     // MARK: - Police interceptor: faster needle
 
     private static func drawInterceptor(ctx: CGContext, accent: NSColor, time: Float) {
@@ -802,6 +866,66 @@ enum ShipArt {
         ctx.fillEllipse(in: CGRect(x: -16.8, y: -2.6, width: 2.6, height: 1.8))
     }
 
+    // MARK: - Police enforcer: heavy law cruiser
+
+    private static func drawPoliceEnforcer(ctx: CGContext, accent: NSColor, time: Float) {
+        let hull = accent
+        let dark = accent.blended(withFraction: 0.4, of: .black) ?? accent
+        let white = NSColor(calibratedWhite: 0.94, alpha: 1)
+        let stripe = NSColor(calibratedRed: 1.0, green: 0.88, blue: 0.15, alpha: 1)
+        let canopy = NSColor(calibratedRed: 0.45, green: 0.75, blue: 1.0, alpha: 0.9)
+        let engine = NSColor(calibratedRed: 0.55, green: 0.8, blue: 1.0, alpha: 1)
+
+        // Broad law wings
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: 2, y: 2), CGPoint(x: -5, y: 12), CGPoint(x: -14, y: 11),
+            CGPoint(x: -10, y: 4), CGPoint(x: -3, y: 2.5),
+        ])
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: 2, y: -2), CGPoint(x: -5, y: -12), CGPoint(x: -14, y: -11),
+            CGPoint(x: -10, y: -4), CGPoint(x: -3, y: -2.5),
+        ])
+        fillPath(ctx, color: white.withAlphaComponent(0.85), points: [
+            CGPoint(x: -11, y: 11), CGPoint(x: -14, y: 11), CGPoint(x: -12, y: 8),
+        ])
+        fillPath(ctx, color: white.withAlphaComponent(0.85), points: [
+            CGPoint(x: -11, y: -11), CGPoint(x: -14, y: -11), CGPoint(x: -12, y: -8),
+        ])
+        // Heavy fuselage
+        fillPath(ctx, color: hull, points: [
+            CGPoint(x: 16, y: 0), CGPoint(x: 9, y: 3.5), CGPoint(x: -7, y: 4),
+            CGPoint(x: -15, y: 2.8), CGPoint(x: -15, y: -2.8), CGPoint(x: -7, y: -4),
+            CGPoint(x: 9, y: -3.5),
+        ])
+        fillPath(ctx, color: white.withAlphaComponent(0.8), points: [
+            CGPoint(x: 12, y: 0.6), CGPoint(x: -12, y: 0.6), CGPoint(x: -12, y: -0.6), CGPoint(x: 12, y: -0.6),
+        ])
+        fillPath(ctx, color: stripe, points: [
+            CGPoint(x: 0, y: 3.8), CGPoint(x: -4, y: 3.9), CGPoint(x: -4, y: -3.9), CGPoint(x: 0, y: -3.8),
+        ])
+        // Dual nose guns
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: 12, y: 2), CGPoint(x: 18, y: 2.4), CGPoint(x: 18, y: 1.2), CGPoint(x: 12, y: 1),
+        ])
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: 12, y: -2), CGPoint(x: 18, y: -2.4), CGPoint(x: 18, y: -1.2), CGPoint(x: 12, y: -1),
+        ])
+        fillPath(ctx, color: canopy, points: [
+            CGPoint(x: 8, y: 0), CGPoint(x: 4, y: 1.8), CGPoint(x: 1, y: 1.5),
+            CGPoint(x: 1, y: -1.5), CGPoint(x: 4, y: -1.8),
+        ])
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: -13, y: 2.5), CGPoint(x: -18, y: 3.2), CGPoint(x: -18, y: 0.6), CGPoint(x: -13, y: 0.4),
+        ])
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: -13, y: -2.5), CGPoint(x: -18, y: -3.2), CGPoint(x: -18, y: -0.6), CGPoint(x: -13, y: -0.4),
+        ])
+        let pulse = 0.55 + 0.4 * sin(time * 13)
+        ctx.setFillColor(engine.withAlphaComponent(CGFloat(pulse)).cgColor)
+        ctx.fillEllipse(in: CGRect(x: -19.5, y: 0.9, width: 2.8, height: 2))
+        ctx.fillEllipse(in: CGRect(x: -19.5, y: -2.9, width: 2.8, height: 2))
+    }
+
     // MARK: - Militia: utilitarian patrol boat
 
     private static func drawMilitia(ctx: CGContext, accent: NSColor, time: Float) {
@@ -861,6 +985,58 @@ enum ShipArt {
         let pulse = 0.55 + 0.35 * sin(time * 12)
         ctx.setFillColor(engine.withAlphaComponent(CGFloat(pulse)).cgColor)
         ctx.fillEllipse(in: CGRect(x: -17, y: -1.5, width: 3, height: 3))
+    }
+
+    // MARK: - Militia frigate: heavier patrol hull
+
+    private static func drawMilitiaFrigate(ctx: CGContext, accent: NSColor, time: Float) {
+        let hull = accent
+        let dark = accent.blended(withFraction: 0.5, of: .black) ?? accent
+        let metal = NSColor(calibratedRed: 0.48, green: 0.5, blue: 0.52, alpha: 1)
+        let canopy = NSColor(calibratedRed: 0.55, green: 0.78, blue: 0.9, alpha: 0.8)
+        let engine = NSColor(calibratedRed: 0.95, green: 0.55, blue: 0.2, alpha: 1)
+
+        // Sweeping combat wings
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: 3, y: 2.5), CGPoint(x: -2, y: 13), CGPoint(x: -13, y: 12),
+            CGPoint(x: -10, y: 4), CGPoint(x: -2, y: 3),
+        ])
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: 3, y: -2.5), CGPoint(x: -2, y: -13), CGPoint(x: -13, y: -12),
+            CGPoint(x: -10, y: -4), CGPoint(x: -2, y: -3),
+        ])
+        // Long armored body
+        fillPath(ctx, color: hull, points: [
+            CGPoint(x: 15, y: 0), CGPoint(x: 9, y: 4), CGPoint(x: -6, y: 4.5),
+            CGPoint(x: -14, y: 3), CGPoint(x: -15, y: 0), CGPoint(x: -14, y: -3),
+            CGPoint(x: -6, y: -4.5), CGPoint(x: 9, y: -4),
+        ])
+        // Top turret
+        ctx.setFillColor(metal.cgColor)
+        ctx.fillEllipse(in: CGRect(x: -3, y: -2.8, width: 5.5, height: 5.5))
+        ctx.setFillColor(canopy.cgColor)
+        ctx.fillEllipse(in: CGRect(x: -1.2, y: -1.2, width: 2.4, height: 2.4))
+        // Side sponsons / rail mounts
+        fillPath(ctx, color: metal, points: [
+            CGPoint(x: 4, y: 4.2), CGPoint(x: 12, y: 5), CGPoint(x: 12, y: 3.5), CGPoint(x: 4, y: 3),
+        ])
+        fillPath(ctx, color: metal, points: [
+            CGPoint(x: 4, y: -4.2), CGPoint(x: 12, y: -5), CGPoint(x: 12, y: -3.5), CGPoint(x: 4, y: -3),
+        ])
+        fillPath(ctx, color: canopy, points: [
+            CGPoint(x: 9, y: 1.6), CGPoint(x: 5, y: 2.2), CGPoint(x: 5, y: -2.2), CGPoint(x: 9, y: -1.6),
+        ])
+        // Twin engines
+        fillPath(ctx, color: metal, points: [
+            CGPoint(x: -13, y: 2.8), CGPoint(x: -18, y: 3.4), CGPoint(x: -18, y: 0.8), CGPoint(x: -13, y: 0.5),
+        ])
+        fillPath(ctx, color: metal, points: [
+            CGPoint(x: -13, y: -2.8), CGPoint(x: -18, y: -3.4), CGPoint(x: -18, y: -0.8), CGPoint(x: -13, y: -0.5),
+        ])
+        let pulse = 0.5 + 0.4 * sin(time * 10)
+        ctx.setFillColor(engine.withAlphaComponent(CGFloat(pulse)).cgColor)
+        ctx.fillEllipse(in: CGRect(x: -19.5, y: 1.1, width: 2.8, height: 2))
+        ctx.fillEllipse(in: CGRect(x: -19.5, y: -3.1, width: 2.8, height: 2))
     }
 
     // MARK: - Vael alien craft (crystalline / organic)
@@ -943,6 +1119,50 @@ enum ShipArt {
         ctx.fillEllipse(in: CGRect(x: -18, y: -5, width: 4, height: 3))
     }
 
+    // MARK: - Vael stalker: mid-weight hunter
+
+    private static func drawAlienStalker(ctx: CGContext, accent: NSColor, time: Float) {
+        let teal = accent
+        let dark = NSColor(calibratedRed: 0.05, green: 0.16, blue: 0.18, alpha: 1)
+        let glow = NSColor(calibratedRed: 0.3, green: 0.95, blue: 0.85, alpha: 1)
+        let pulse = 0.45 + 0.45 * sin(time * 9)
+
+        // Crescent body
+        fillPath(ctx, color: dark, points: [
+            CGPoint(x: 15, y: 0),
+            CGPoint(x: 6, y: 4),
+            CGPoint(x: -6, y: 8),
+            CGPoint(x: -15, y: 3),
+            CGPoint(x: -11, y: 0),
+            CGPoint(x: -15, y: -3),
+            CGPoint(x: -6, y: -8),
+            CGPoint(x: 6, y: -4),
+        ])
+        fillPath(ctx, color: teal, points: [
+            CGPoint(x: 12, y: 0),
+            CGPoint(x: 4, y: 2.5),
+            CGPoint(x: -5, y: 4),
+            CGPoint(x: -10, y: 0),
+            CGPoint(x: -5, y: -4),
+            CGPoint(x: 4, y: -2.5),
+        ])
+        // Forward spike
+        fillPath(ctx, color: glow.withAlphaComponent(0.9), points: [
+            CGPoint(x: 10, y: 0), CGPoint(x: 17, y: 0.8), CGPoint(x: 17, y: -0.8),
+        ])
+        // Wing spines
+        strokePath(ctx, color: glow.withAlphaComponent(0.75), width: 1.4, points: [
+            CGPoint(x: -2, y: 4), CGPoint(x: -14, y: 11),
+        ])
+        strokePath(ctx, color: glow.withAlphaComponent(0.75), width: 1.4, points: [
+            CGPoint(x: -2, y: -4), CGPoint(x: -14, y: -11),
+        ])
+        ctx.setFillColor(glow.withAlphaComponent(CGFloat(pulse)).cgColor)
+        ctx.fillEllipse(in: CGRect(x: -2, y: -2.2, width: 4.4, height: 4.4))
+        ctx.setFillColor(glow.withAlphaComponent(CGFloat(0.4 + pulse * 0.4)).cgColor)
+        ctx.fillEllipse(in: CGRect(x: -17, y: -1.5, width: 3.5, height: 3))
+    }
+
     // MARK: - Space station (orbital structure)
 
     static func drawStation(
@@ -950,28 +1170,36 @@ enum ShipArt {
         name: String, faction: String,
         turretAim: Float = 0,
         defenseRange: Float = 0,
-        showDefenseRing: Bool = false
+        showDefenseRing: Bool = false,
+        isEnemyBase: Bool = false
     ) {
         ctx.saveGState()
         ctx.translateBy(x: p.x, y: p.y)
 
         let r = radius
-        let metal = NSColor(calibratedRed: 0.55, green: 0.58, blue: 0.62, alpha: 1)
-        let metalDark = NSColor(calibratedRed: 0.28, green: 0.30, blue: 0.35, alpha: 1)
-        let gold = Theme.station
-        let light = Theme.accent
-        let window = NSColor(calibratedRed: 0.4, green: 0.85, blue: 1.0, alpha: 0.9)
+        let metal = isEnemyBase
+            ? NSColor(calibratedRed: 0.55, green: 0.32, blue: 0.34, alpha: 1)
+            : NSColor(calibratedRed: 0.55, green: 0.58, blue: 0.62, alpha: 1)
+        let metalDark = isEnemyBase
+            ? NSColor(calibratedRed: 0.28, green: 0.12, blue: 0.14, alpha: 1)
+            : NSColor(calibratedRed: 0.28, green: 0.30, blue: 0.35, alpha: 1)
+        let gold = isEnemyBase ? Theme.pirate : Theme.station
+        let light = isEnemyBase ? Theme.danger : Theme.accent
+        let window = isEnemyBase
+            ? NSColor(calibratedRed: 1.0, green: 0.35, blue: 0.25, alpha: 0.9)
+            : NSColor(calibratedRed: 0.4, green: 0.85, blue: 1.0, alpha: 0.9)
 
         // Soft outer glow / docking envelope
-        ctx.setStrokeColor(gold.withAlphaComponent(0.15).cgColor)
-        ctx.setLineWidth(1)
+        ctx.setStrokeColor(gold.withAlphaComponent(isEnemyBase ? 0.28 : 0.15).cgColor)
+        ctx.setLineWidth(isEnemyBase ? 2 : 1)
         ctx.strokeEllipse(in: CGRect(x: -r - 8, y: -r - 8, width: (r + 8) * 2, height: (r + 8) * 2))
 
-        // Defense perimeter when engaging hostiles
-        if showDefenseRing, defenseRange > 0 {
+        // Defense perimeter when engaging hostiles (or always faintly for dens)
+        if showDefenseRing || isEnemyBase, defenseRange > 0 {
             let dr = CGFloat(defenseRange)
             let pulse = 0.12 + 0.08 * sin(time * 3)
-            ctx.setStrokeColor(Theme.danger.withAlphaComponent(CGFloat(pulse)).cgColor)
+            let ringAlpha = showDefenseRing ? pulse : 0.06 + 0.04 * sin(time * 1.5)
+            ctx.setStrokeColor(Theme.danger.withAlphaComponent(CGFloat(ringAlpha)).cgColor)
             ctx.setLineWidth(1)
             ctx.setLineDash(phase: CGFloat(time * 20), lengths: [8, 10])
             ctx.strokeEllipse(in: CGRect(x: -dr, y: -dr, width: dr * 2, height: dr * 2))
@@ -1090,9 +1318,16 @@ enum ShipArt {
         ctx.restoreGState()
 
         drawLabel(name, at: CGPoint(x: p.x, y: p.y - r - 16), size: 11, weight: .semibold, color: gold)
-        let defLabel = showDefenseRing ? "\(faction)  ·  DEFENSES ACTIVE" : faction
+        let defLabel: String
+        if showDefenseRing {
+            defLabel = isEnemyBase ? "\(faction)  ·  DEN DEFENSE" : "\(faction)  ·  DEFENSES ACTIVE"
+        } else if isEnemyBase {
+            defLabel = "\(faction)  ·  ENEMY BASE"
+        } else {
+            defLabel = faction
+        }
         drawLabel(defLabel, at: CGPoint(x: p.x, y: p.y - r - 30), size: 9, weight: .regular,
-                  color: showDefenseRing ? Theme.danger : Theme.textSecondary)
+                  color: (showDefenseRing || isEnemyBase) ? Theme.danger : Theme.textSecondary)
     }
 
     // MARK: - Path helpers

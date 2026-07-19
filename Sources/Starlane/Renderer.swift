@@ -161,14 +161,23 @@ enum Renderer {
                 if case .missionStation(let name) = engine.navWaypoint { return name == st.name }
                 return false
             }()
+            let densEngaged = st.isEnemyBase && (
+                engine.npcs.contains {
+                    ($0.faction == .police || $0.faction == .militia)
+                        && distance($0.position, st.position) < st.defenseRange
+                }
+                || distance(engine.player.position, st.position) < st.defenseRange
+            )
+            let friendlyEngaged = !st.isEnemyBase && engine.npcs.contains {
+                $0.isHostile && distance($0.position, st.position) < st.defenseRange
+            }
             ShipArt.drawStation(
                 ctx: ctx, at: p, radius: CGFloat(st.radius),
                 time: engine.time, name: st.name, faction: st.faction,
                 turretAim: st.turretAim,
                 defenseRange: st.defenseRange,
-                showDefenseRing: engine.npcs.contains {
-                    $0.isHostile && distance($0.position, st.position) < st.defenseRange
-                }
+                showDefenseRing: densEngaged || friendlyEngaged,
+                isEnemyBase: st.isEnemyBase
             )
             // Range under station name (ShipArt already draws name/faction)
             let onScreen = p.x > -40 && p.x < bounds.width + 40 && p.y > -40 && p.y < bounds.height + 40
@@ -323,11 +332,29 @@ enum Renderer {
             if proj.source == .station {
                 col = Theme.gold
             } else if proj.source == .enemy {
-                col = Theme.enemyLaser
+                // Faction-tinted enemy bolts
+                if let owner = engine.npcs.first(where: { $0.id == proj.ownerID }) {
+                    switch owner.faction {
+                    case .pirate: col = Theme.enemyLaser
+                    case .police: col = Theme.police
+                    case .militia: col = Theme.militia
+                    case .alien: col = Theme.alien
+                    case .trader: col = Theme.trader
+                    }
+                } else {
+                    switch proj.kind {
+                    case .plasma: col = Theme.plasma
+                    case .pulse: col = Theme.pulse
+                    case .rail: col = Theme.rail
+                    default: col = Theme.enemyLaser
+                    }
+                }
             } else {
                 switch proj.kind {
                 case .laser: col = Theme.laser
                 case .plasma: col = Theme.plasma
+                case .pulse: col = Theme.pulse
+                case .rail: col = Theme.rail
                 case .missile: col = Theme.missile
                 case .mine: col = Theme.danger
                 }
@@ -337,6 +364,8 @@ enum Renderer {
             switch proj.kind {
             case .missile: width = 3.5; len = 10
             case .plasma: width = 4.0; len = 9
+            case .rail: width = 3.0; len = 14
+            case .pulse: width = 1.8; len = 5
             case .mine: width = 2.0; len = 4
             case .laser: width = proj.source == .station ? 3.2 : 2.5; len = proj.source == .station ? 9 : 6
             }
@@ -349,7 +378,13 @@ enum Renderer {
             ctx.addLine(to: CGPoint(x: p.x + dx, y: p.y + dy))
             ctx.strokePath()
             ctx.setFillColor(col.withAlphaComponent(0.85).cgColor)
-            let s: CGFloat = proj.kind == .missile ? 5 : (proj.kind == .plasma ? 4 : (proj.source == .station ? 3.5 : 2))
+            let s: CGFloat
+            switch proj.kind {
+            case .missile: s = 5
+            case .plasma: s = 4
+            case .rail: s = 3.5
+            default: s = proj.source == .station ? 3.5 : 2
+            }
             ctx.fillEllipse(in: CGRect(x: p.x - s / 2, y: p.y - s / 2, width: s, height: s))
         }
 
@@ -1100,7 +1135,14 @@ enum Renderer {
                        frac: CGFloat(p.cargoUsed / max(1, p.stats.cargoCapacity)), color: Theme.accent,
                        text: String(format: "%.0f/%.0f", p.cargoUsed, p.stats.cargoCapacity))
         y -= 14
-        let wCol = p.weaponMode == .plasma ? Theme.plasma : Theme.laser
+        let wCol: NSColor = {
+            switch p.weaponMode {
+            case .laser: return Theme.laser
+            case .plasma: return Theme.plasma
+            case .pulse: return Theme.pulse
+            case .rail: return Theme.rail
+            }
+        }()
         let lockHint: String = {
             if let tid = engine.targetID, let t = engine.npcs.first(where: { $0.id == tid }),
                t.isHostile, distance(t.position, p.position) <= GameEngine.missileLockRange {
@@ -1163,7 +1205,24 @@ enum Renderer {
                      font: .systemFont(ofSize: 10, weight: .semibold), color: Theme.gold)
         }
 
-        // Freelane time trial HUD
+        // Nav waypoint panel (under status — left side)
+        drawNavPanel(ctx: ctx, bounds: bounds, engine: engine, margin: margin)
+
+        // Off-screen nav edge marker
+        drawNavEdgeMarker(ctx: ctx, bounds: bounds, engine: engine)
+
+        // Minimap
+        drawMinimap(ctx: ctx, bounds: bounds, engine: engine)
+
+        // ── Top-center stack (top → bottom, no overlap) ─────────────────
+        // Story/missions → race → weather → compass → autopilot badge.
+        // Each band consumes vertical space so bars never cover each other.
+        var stackTop = bounds.height - margin  // next free Y (top edge of next bar)
+
+        stackTop = drawStoryMissionStrip(ctx: ctx, bounds: bounds, engine: engine,
+                                         margin: margin, stackTop: stackTop)
+
+        // Freelane time trial / result banner
         if engine.raceActive {
             let t = GameEngine.formatRaceTime(engine.raceTimer)
             var line = "TIME TRIAL  \(t)"
@@ -1179,8 +1238,11 @@ enum Renderer {
             if !engine.raceGhostSamples.isEmpty {
                 line += "  ·  GHOST"
             }
+            let barH: CGFloat = 28
+            let gap: CGFloat = 6
             let barW = min(bounds.width - 40, 520)
-            let bar = CGRect(x: (bounds.width - barW) / 2, y: bounds.height - 56, width: barW, height: 28)
+            let bar = CGRect(x: (bounds.width - barW) / 2, y: stackTop - gap - barH,
+                             width: barW, height: barH)
             Theme.gold.withAlphaComponent(0.28).setFill()
             let path = NSBezierPath(roundedRect: bar, xRadius: 8, yRadius: 8)
             path.fill()
@@ -1191,9 +1253,13 @@ enum Renderer {
             drawText(line, at: CGPoint(x: bar.midX, y: bar.midY - 7),
                      font: .monospacedDigitSystemFont(ofSize: 13, weight: .heavy),
                      color: ahead ? Theme.gold : Theme.warning, align: .center)
+            stackTop = bar.minY
         } else if !engine.raceResultBanner.isEmpty {
+            let barH: CGFloat = 28
+            let gap: CGFloat = 6
             let barW = min(bounds.width - 40, 480)
-            let bar = CGRect(x: (bounds.width - barW) / 2, y: bounds.height - 56, width: barW, height: 28)
+            let bar = CGRect(x: (bounds.width - barW) / 2, y: stackTop - gap - barH,
+                             width: barW, height: barH)
             Theme.accent.withAlphaComponent(0.3).setFill()
             let path = NSBezierPath(roundedRect: bar, xRadius: 8, yRadius: 8)
             path.fill()
@@ -1203,13 +1269,11 @@ enum Renderer {
             drawText(engine.raceResultBanner, at: CGPoint(x: bar.midX, y: bar.midY - 7),
                      font: .systemFont(ofSize: 13, weight: .heavy),
                      color: Theme.textPrimary, align: .center)
+            stackTop = bar.minY
         }
 
         // Environment / space weather HUD (no screen-edge vignette)
         let env = engine.environmentEffects
-        // Shift weather bar down if race HUD is up
-        let weatherY: CGFloat = (engine.raceActive || !engine.raceResultBanner.isEmpty)
-            ? bounds.height - 90 : bounds.height - 56
         if !env.labels.isEmpty {
             let hazard = env.isHazardous
             let text = env.labels.joined(separator: " · ")
@@ -1232,8 +1296,11 @@ enum Renderer {
                 }
                 return ""
             }()
+            let barH: CGFloat = 28
+            let gap: CGFloat = 6
             let barW = min(bounds.width - 40, 480)
-            let bar = CGRect(x: (bounds.width - barW) / 2, y: weatherY, width: barW, height: 28)
+            let bar = CGRect(x: (bounds.width - barW) / 2, y: stackTop - gap - barH,
+                             width: barW, height: barH)
             (hazard ? Theme.danger : Theme.accent).withAlphaComponent(0.35).setFill()
             let path = NSBezierPath(roundedRect: bar, xRadius: 8, yRadius: 8)
             path.fill()
@@ -1243,54 +1310,50 @@ enum Renderer {
             drawText(text + detail, at: CGPoint(x: bar.midX, y: bar.midY - 7),
                      font: .systemFont(ofSize: 13, weight: .heavy),
                      color: Theme.textPrimary, align: .center)
+            stackTop = bar.minY
         }
 
-        // Nav waypoint panel (under status or top-center-left)
-        drawNavPanel(ctx: ctx, bounds: bounds, engine: engine, margin: margin)
+        // Compass strip (under stacked banners)
+        stackTop = drawCompass(ctx: ctx, bounds: bounds, engine: engine, stackTop: stackTop)
 
-        // Compass strip
-        drawCompass(ctx: ctx, bounds: bounds, engine: engine)
+        // Autopilot badge under compass
+        if engine.autopilotWasActive || engine.autopilotHeld {
+            let gap: CGFloat = 8
+            drawText("AP HOLD H", at: CGPoint(x: bounds.midX, y: stackTop - gap - 12),
+                     font: .systemFont(ofSize: 10, weight: .bold),
+                     color: engine.autopilotHeld ? Theme.hull : Theme.textMuted, align: .center)
+        }
 
-        // Off-screen nav edge marker
-        drawNavEdgeMarker(ctx: ctx, bounds: bounds, engine: engine)
-
-        // Minimap
-        drawMinimap(ctx: ctx, bounds: bounds, engine: engine)
-
-        // Story + mission strip (top center — reserved; flash toasts draw lower so they never cover this)
-        drawStoryMissionStrip(ctx: ctx, bounds: bounds, engine: engine, margin: margin)
-
-        // Radio chatter (above NEWS)
+        // Radio chatter (above NEWS) — compact centered strip, not full-width
         if !engine.radioLine.isEmpty {
-            let bar = CGRect(x: 16, y: 62, width: bounds.width - 32, height: 22)
+            let font = NSFont.systemFont(ofSize: 11, weight: .medium)
+            let label = "RADIO  \(engine.radioLine)"
+            let bar = Self.bottomTickerBar(bounds: bounds, y: 62, text: label, font: font, maxWidth: 480)
             Theme.panelBg.withAlphaComponent(0.9).setFill()
             NSBezierPath(roundedRect: bar, xRadius: 6, yRadius: 6).fill()
             Theme.accent.withAlphaComponent(0.45).setStroke()
             let bp = NSBezierPath(roundedRect: bar, xRadius: 6, yRadius: 6)
             bp.lineWidth = 1
             bp.stroke()
-            drawText("RADIO  \(engine.radioLine)", at: CGPoint(x: bar.minX + 10, y: bar.minY + 4),
-                     font: .systemFont(ofSize: 11, weight: .medium), color: Theme.accent)
+            let shown = Self.truncateToWidth(label, font: font, maxWidth: bar.width - 20)
+            drawText(shown, at: CGPoint(x: bar.minX + 10, y: bar.minY + 4),
+                     font: font, color: Theme.accent)
         }
 
-        // News ticker (bottom)
+        // News ticker (bottom) — compact centered strip sized to the headline
         if !engine.newsLine.isEmpty {
-            let bar = CGRect(x: 16, y: 36, width: bounds.width - 32, height: 22)
+            let font = NSFont.systemFont(ofSize: 11, weight: .medium)
+            let label = "NEWS  \(engine.newsLine)"
+            let bar = Self.bottomTickerBar(bounds: bounds, y: 36, text: label, font: font, maxWidth: 520)
             Theme.panelBg.setFill()
             NSBezierPath(roundedRect: bar, xRadius: 6, yRadius: 6).fill()
             Theme.panelBorder.setStroke()
             let bp = NSBezierPath(roundedRect: bar, xRadius: 6, yRadius: 6)
             bp.lineWidth = 1
             bp.stroke()
-            drawText("NEWS  \(engine.newsLine)", at: CGPoint(x: bar.minX + 10, y: bar.minY + 4),
-                     font: .systemFont(ofSize: 11, weight: .medium), color: Theme.gold)
-        }
-
-        // Autopilot badge
-        if engine.autopilotWasActive || engine.autopilotHeld {
-            drawText("AP HOLD H", at: CGPoint(x: bounds.midX, y: bounds.height - 118),
-                     font: .systemFont(ofSize: 10, weight: .bold),
-                     color: engine.autopilotHeld ? Theme.hull : Theme.textMuted, align: .center)
+            let shown = Self.truncateToWidth(label, font: font, maxWidth: bar.width - 20)
+            drawText(shown, at: CGPoint(x: bar.minX + 10, y: bar.minY + 4),
+                     font: font, color: Theme.gold)
         }
 
         // Controls hint
@@ -1333,8 +1396,11 @@ enum Renderer {
                  font: .systemFont(ofSize: 11), color: Theme.textMuted, align: .center)
     }
 
-    /// Top-center campaign / mission lines (height reserved so flash toasts sit below).
-    private static func drawStoryMissionStrip(ctx: CGContext, bounds: CGRect, engine: GameEngine, margin: CGFloat) {
+    /// Top-center campaign / mission lines. Returns updated stackTop (bottom of strip).
+    @discardableResult
+    private static func drawStoryMissionStrip(
+        ctx: CGContext, bounds: CGRect, engine: GameEngine, margin: CGFloat, stackTop: CGFloat
+    ) -> CGFloat {
         let lines: [(String, NSColor, NSFont)] = {
             var out: [(String, NSColor, NSFont)] = []
             out.append((
@@ -1354,7 +1420,7 @@ enum Renderer {
             }
             return out
         }()
-        guard !lines.isEmpty else { return }
+        guard !lines.isEmpty else { return stackTop }
 
         let lineH: CGFloat = 16
         let padX: CGFloat = 16
@@ -1366,10 +1432,10 @@ enum Renderer {
         }
         let panelW = min(bounds.width - 280, maxW + padX * 2)
         let panelH = CGFloat(lines.count) * lineH + padY * 2
-        // Sit under the top edge, centered — clear of status (left) and target (right)
+        // Cap width so we don't collide with left status / right target panels
         let panel = CGRect(
             x: (bounds.width - panelW) / 2,
-            y: bounds.height - margin - panelH - 4,
+            y: stackTop - panelH,
             width: panelW,
             height: panelH
         )
@@ -1386,6 +1452,7 @@ enum Renderer {
             drawText(text, at: CGPoint(x: mx, y: y), font: font, color: color, align: .center)
             y -= lineH
         }
+        return panel.minY
     }
 
     private static func drawNavPanel(ctx: CGContext, bounds: CGRect, engine: GameEngine, margin: CGFloat) {
@@ -1454,11 +1521,16 @@ enum Renderer {
         ctx.fillEllipse(in: CGRect(x: dialC.x - 2.5, y: dialC.y - 2.5, width: 5, height: 5))
     }
 
-    private static func drawCompass(ctx: CGContext, bounds: CGRect, engine: GameEngine) {
+    /// Compass strip under the top-center stack. Returns updated stackTop (bottom of bar).
+    @discardableResult
+    private static func drawCompass(
+        ctx: CGContext, bounds: CGRect, engine: GameEngine, stackTop: CGFloat
+    ) -> CGFloat {
         let barW = min(420, bounds.width * 0.45)
         let barH: CGFloat = 28
-        // Below story strip (top ~60–90px); keep clear of flash toasts at bottom
-        let bar = CGRect(x: (bounds.width - barW) / 2, y: bounds.height - 100, width: barW, height: barH)
+        let gap: CGFloat = 6
+        let bar = CGRect(x: (bounds.width - barW) / 2, y: stackTop - gap - barH,
+                         width: barW, height: barH)
         Theme.panelBg.withAlphaComponent(0.85).setFill()
         NSBezierPath(roundedRect: bar, xRadius: 6, yRadius: 6).fill()
         Theme.panelBorder.setStroke()
@@ -1483,7 +1555,7 @@ enum Renderer {
 
         func place(_ worldPos: SIMD2<Float>, label: String, color: NSColor, important: Bool) {
             let bearing = angleToward(engine.player.position, worldPos)
-            var delta = wrapAngle(bearing - playerAng)
+            let delta = wrapAngle(bearing - playerAng)
             guard abs(delta) <= halfFOV * 1.05 else { return }
             let t = CGFloat(delta / halfFOV) // -1...1
             let x = cx + t * (barW * 0.5 - 14)
@@ -1501,7 +1573,8 @@ enum Renderer {
         let nav = engine.resolveNav()
         for st in sys.stations {
             let isNav = nav.map { distance($0.position, st.position) < 5 } ?? false
-            place(st.position, label: shortName(st.name), color: isNav ? Theme.gold : Theme.station, important: isNav)
+            let stCol = st.isEnemyBase ? Theme.pirate : Theme.station
+            place(st.position, label: shortName(st.name), color: isNav ? Theme.gold : stCol, important: isNav || st.isEnemyBase)
         }
         for g in sys.gates {
             let isNav = nav.map { distance($0.position, g.position) < 5 } ?? false
@@ -1513,6 +1586,7 @@ enum Renderer {
         if let eid = engine.escortShipID, let h = engine.npcs.first(where: { $0.id == eid }) {
             place(h.position, label: "ESC", color: Theme.gold, important: true)
         }
+        return bar.minY
     }
 
     private static func shortName(_ s: String) -> String {
@@ -1641,12 +1715,13 @@ enum Renderer {
         for st in sys.stations {
             let p = map(st.position)
             let isNav = nav.map { distance($0.position, st.position) < 5 } ?? false
-            ctx.setFillColor((isNav ? Theme.gold : Theme.station).cgColor)
-            let r: CGFloat = isNav ? 4.5 : 3.5
+            let baseCol = st.isEnemyBase ? Theme.pirate : Theme.station
+            ctx.setFillColor((isNav ? Theme.gold : baseCol).cgColor)
+            let r: CGFloat = isNav ? 4.5 : (st.isEnemyBase ? 4 : 3.5)
             ctx.fillEllipse(in: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
             drawText(shortName(st.name), at: CGPoint(x: p.x, y: p.y - 11),
-                     font: .systemFont(ofSize: 8, weight: isNav ? .bold : .medium),
-                     color: isNav ? Theme.gold : Theme.station.withAlphaComponent(0.9), align: .center)
+                     font: .systemFont(ofSize: 8, weight: isNav || st.isEnemyBase ? .bold : .medium),
+                     color: isNav ? Theme.gold : baseCol.withAlphaComponent(0.9), align: .center)
         }
         // Gates + dest labels
         for g in sys.gates {
@@ -1833,22 +1908,30 @@ enum Renderer {
             let p = layout.worldToScreen(st.position)
             let isSel = selected.map { distance($0.position, st.position) < 1 } ?? false
             let isNav = activeNav.map { distance($0.position, st.position) < 5 } ?? false
-            let col = isSel || isNav ? Theme.gold : Theme.station
-            let r: CGFloat = isSel ? 9 : 7
+            let baseCol = st.isEnemyBase ? Theme.pirate : Theme.station
+            let col = isSel || isNav ? Theme.gold : baseCol
+            let r: CGFloat = isSel ? 9 : (st.isEnemyBase ? 8 : 7)
             ctx.setFillColor(col.cgColor)
             ctx.fillEllipse(in: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
             if isSel {
                 ctx.setStrokeColor(Theme.gold.cgColor)
                 ctx.setLineWidth(2)
                 ctx.strokeEllipse(in: CGRect(x: p.x - r - 5, y: p.y - r - 5, width: (r + 5) * 2, height: (r + 5) * 2))
+            } else if st.isEnemyBase {
+                ctx.setStrokeColor(Theme.pirate.withAlphaComponent(0.6).cgColor)
+                ctx.setLineWidth(1.5)
+                ctx.strokeEllipse(in: CGRect(x: p.x - r - 4, y: p.y - r - 4, width: (r + 4) * 2, height: (r + 4) * 2))
             }
-            drawText(st.name, at: CGPoint(x: p.x, y: p.y - r - 14),
+            let label = st.isEnemyBase ? "☠ \(st.name)" : st.name
+            drawText(label, at: CGPoint(x: p.x, y: p.y - r - 14),
                      font: .systemFont(ofSize: isSel ? 12 : 11, weight: isSel ? .bold : .semibold),
                      color: col, align: .center)
             let d = GameEngine.formatNavDistance(distance(engine.player.position, st.position))
-            drawText(d, at: CGPoint(x: p.x, y: p.y - r - 28),
+            let sub = st.isEnemyBase ? "\(d) · ENEMY BASE" : d
+            drawText(sub, at: CGPoint(x: p.x, y: p.y - r - 28),
                      font: .monospacedDigitSystemFont(ofSize: 10, weight: .regular),
-                     color: Theme.textSecondary, align: .center)
+                     color: st.isEnemyBase ? Theme.pirate.withAlphaComponent(0.85) : Theme.textSecondary,
+                     align: .center)
         }
 
         // Gates
@@ -2012,17 +2095,23 @@ enum Renderer {
         }
 
         guard let st = engine.dockedStation else { return }
-        let panelW = min(720, bounds.width - 80)
-        let panelH = min(480, bounds.height - 80)
+        // Tall panel so Outfit (and other long tabs) have room; still leaves margin on short displays
+        let panelW = min(760, bounds.width - 60)
+        let panelH = min(640, bounds.height - 48)
         let panel = CGRect(x: (bounds.width - panelW) / 2, y: (bounds.height - panelH) / 2,
                            width: panelW, height: panelH)
         drawPanel(ctx: ctx, rect: panel, radius: 12)
 
         // Header
-        drawText(st.name, at: CGPoint(x: panel.minX + 24, y: panel.maxY - 32),
-                 font: .systemFont(ofSize: 20, weight: .bold), color: Theme.station)
-        drawText(st.description, at: CGPoint(x: panel.minX + 24, y: panel.maxY - 52),
-                 font: .systemFont(ofSize: 11), color: Theme.textSecondary)
+        let headerCol = st.isEnemyBase ? Theme.pirate : Theme.station
+        let headerName = st.isEnemyBase ? "☠ \(st.name)" : st.name
+        drawText(headerName, at: CGPoint(x: panel.minX + 24, y: panel.maxY - 32),
+                 font: .systemFont(ofSize: 20, weight: .bold), color: headerCol)
+        let subDesc = st.isEnemyBase
+            ? "\(st.faction) den · \(st.description)"
+            : st.description
+        drawText(subDesc, at: CGPoint(x: panel.minX + 24, y: panel.maxY - 52),
+                 font: .systemFont(ofSize: 11), color: st.isEnemyBase ? Theme.danger.withAlphaComponent(0.85) : Theme.textSecondary)
         drawText("\(engine.player.credits) cr   ·   Hold \(String(format: "%.0f", engine.player.cargoUsed))/\(String(format: "%.0f", engine.player.stats.cargoCapacity))",
                  at: CGPoint(x: panel.maxX - 24, y: panel.maxY - 32),
                  font: .monospacedDigitSystemFont(ofSize: 12, weight: .medium), color: Theme.gold, align: .right)
@@ -2155,8 +2244,12 @@ enum Renderer {
     private static func drawStatusTab(content: CGRect, engine: GameEngine, station: Station) {
         let p = engine.player
         var y = content.maxY - 10
-        drawText("Ship Status — \(station.faction)", at: CGPoint(x: content.minX, y: y),
-                 font: .systemFont(ofSize: 14, weight: .semibold), color: Theme.textPrimary)
+        let statusTitle = station.isEnemyBase
+            ? "Ship Status — \(station.faction) ☠ ENEMY BASE"
+            : "Ship Status — \(station.faction)"
+        drawText(statusTitle, at: CGPoint(x: content.minX, y: y),
+                 font: .systemFont(ofSize: 14, weight: .semibold),
+                 color: station.isEnemyBase ? Theme.pirate : Theme.textPrimary)
         y -= 28
         let planets = p.discoveredPlanets.count
         let wrecks = p.discoveredWrecks.count
@@ -2183,7 +2276,7 @@ enum Renderer {
             if let s = p.pirateProtectionSeconds, s > 0 {
                 return "Protection: \(Int(s))s remaining"
             }
-            return "Protection: none (Umbra / black markets)"
+            return "Protection: none (Umbra / dens / black markets)"
         }()
         let lines = [
             "Hull class: \(p.shipClass.displayName)",
@@ -2395,6 +2488,7 @@ enum Renderer {
     }
 
     private static func drawOutfitTab(content: CGRect, engine: GameEngine, station: Station) {
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         let p = engine.player
         let paint = p.paintJob
         let owned = p.ownedPaints.contains(paint)
@@ -2441,7 +2535,7 @@ enum Renderer {
             ("Engines Mk\(p.engineLevel)", p.engineLevel >= 5 ? "MAX" : "Upgrade → Mk\(p.engineLevel + 1)  (\(1000 * p.engineLevel) cr)", 1, false),
             ("Shields Mk\(p.shieldLevel)", p.shieldLevel >= 5 ? "MAX" : "Upgrade → Mk\(p.shieldLevel + 1)  (\(1100 * p.shieldLevel) cr)", 2, false),
             ("Energy Plant Mk\(p.energyLevel)", p.energyLevel >= 5 ? "MAX — capacitor & regen"
-                : "More energy for lasers/plasma/shields  (\(1150 * p.energyLevel) cr)", 3, false),
+                : "More energy for weapons & shields  (\(1150 * p.energyLevel) cr)", 3, false),
             ("Cargo Hold Mk\(p.cargoLevel)", p.cargoLevel >= 5 ? "MAX" : "Upgrade → Mk\(p.cargoLevel + 1)  (\(900 * p.cargoLevel) cr)", 4, false),
             ("Full Repair", "Restore hull (\(Int(ceil(p.stats.maxHull - p.hull)) * station.repairCostPerHull) cr)", 5, false),
             ("Paint: \(paint.displayName)", paintSub, 6, false),
@@ -2463,7 +2557,7 @@ enum Renderer {
                 if let s = p.pirateProtectionSeconds, s > 0 {
                     return "Active \(Int(s))s · Enter extend \(Player.pirateProtectionFee) cr"
                 }
-                return "Umbra/black market · \(Player.pirateProtectionFee) cr · pirates stand down"
+                return "Umbra/dens/black market · \(Player.pirateProtectionFee) cr · pirates stand down"
             }(), 13, false),
             ("Mines \(p.mineStock)/\(p.maxMinesForClass)",
              p.mineStock >= p.maxMinesForClass ? "Racks full · J drops mine"
@@ -2480,37 +2574,89 @@ enum Renderer {
             }
         }
 
-        var y = content.maxY - 6
         let header = engine.isAlienOutfitter ? "Outfitter · VAEL TECH" : "Outfitter & Services"
-        drawText(header, at: CGPoint(x: content.minX, y: y),
+        drawText(header, at: CGPoint(x: content.minX, y: content.maxY - 4),
                  font: .systemFont(ofSize: 14, weight: .semibold),
                  color: engine.isAlienOutfitter ? Theme.alien : Theme.textPrimary)
-        y -= 28
 
-        for (title, subtitle, idx, isAlien) in items {
+        // Scrollable list viewport (CG y ↑). Leave a clear band under the header so the
+        // first row title (Weapons) is never clipped when firstVisible == 0.
+        let rowH: CGFloat = 40
+        let listTopY = content.maxY - 34   // top edge of viewport (below header)
+        let listBotY = content.minY + 18   // bottom edge (above ▼ hint)
+        let viewportH = max(rowH, listTopY - listBotY)
+        let visibleRows = max(1, Int(floor(viewportH / rowH)))
+        let selectedPos = items.firstIndex(where: { $0.2 == engine.outfitSelectIndex }) ?? 0
+
+        // Keep the selected row fully inside the viewport.
+        let maxFirst = max(0, items.count - visibleRows)
+        var firstVisible = 0
+        if selectedPos >= visibleRows {
+            firstVisible = selectedPos - visibleRows + 1
+        }
+        firstVisible = min(max(0, firstVisible), maxFirst)
+
+        let clipRect = CGRect(
+            x: content.minX - 6,
+            y: listBotY,
+            width: content.width + 12,
+            height: viewportH
+        )
+        ctx.saveGState()
+        ctx.clip(to: clipRect)
+
+        for (i, item) in items.enumerated() {
+            let (title, subtitle, idx, isAlien) = item
+            let slot = i - firstVisible
+            // Full row band from top of viewport downward
+            let rowTop = listTopY - CGFloat(slot) * rowH
+            let rowBot = rowTop - rowH
+            // Skip rows fully outside the viewport
+            guard rowBot < listTopY && rowTop > listBotY else { continue }
+
+            // Title baseline sits inside the row with room for glyphs above;
+            // subtitle sits under the title. (NSString.draw origin = bottom-left of text.)
+            let titleY = rowTop - 18
+            let subY = titleY - 14
+
             let selected = idx == engine.outfitSelectIndex
             if selected {
-                (isAlien ? Theme.alien : Theme.accent).withAlphaComponent(0.12).setFill()
-                NSBezierPath(roundedRect: CGRect(x: content.minX - 4, y: y - 20, width: content.width + 8, height: 36),
-                             xRadius: 6, yRadius: 6).fill()
+                (isAlien ? Theme.alien : Theme.accent).withAlphaComponent(0.18).setFill()
+                NSBezierPath(
+                    roundedRect: CGRect(x: content.minX - 4, y: rowBot + 3,
+                                        width: content.width + 8, height: rowH - 6),
+                    xRadius: 6, yRadius: 6
+                ).fill()
             }
-            let titleCol = selected ? (isAlien ? Theme.alien : Theme.accent) : (isAlien ? Theme.alien : Theme.textPrimary)
-            drawText(title, at: CGPoint(x: content.minX, y: y),
+            let titleCol = selected
+                ? (isAlien ? Theme.alien : Theme.accent)
+                : (isAlien ? Theme.alien : Theme.textPrimary)
+            drawText(title, at: CGPoint(x: content.minX, y: titleY),
                      font: .systemFont(ofSize: 12, weight: selected ? .bold : .medium),
                      color: titleCol)
-            drawText(subtitle, at: CGPoint(x: content.minX, y: y - 14),
+            drawText(subtitle, at: CGPoint(x: content.minX, y: subY),
                      font: .systemFont(ofSize: 10), color: Theme.textSecondary)
             if idx == 6 {
                 paint.hull.setFill()
-                NSBezierPath(roundedRect: CGRect(x: content.maxX - 36, y: y - 2, width: 28, height: 14),
+                NSBezierPath(roundedRect: CGRect(x: content.maxX - 36, y: titleY - 2, width: 28, height: 14),
                              xRadius: 3, yRadius: 3).fill()
                 paint.accent.setStroke()
-                let sw = NSBezierPath(roundedRect: CGRect(x: content.maxX - 36, y: y - 2, width: 28, height: 14),
+                let sw = NSBezierPath(roundedRect: CGRect(x: content.maxX - 36, y: titleY - 2, width: 28, height: 14),
                                       xRadius: 3, yRadius: 3)
                 sw.lineWidth = 2
                 sw.stroke()
             }
-            y -= 36
+        }
+        ctx.restoreGState()
+
+        // Scroll hints (outside clip so they stay readable)
+        if firstVisible > 0 {
+            drawText("▲ more · ↑", at: CGPoint(x: content.maxX, y: content.maxY - 20),
+                     font: .systemFont(ofSize: 9, weight: .semibold), color: Theme.accent, align: .right)
+        }
+        if firstVisible + visibleRows < items.count {
+            drawText("▼ more · ↓", at: CGPoint(x: content.maxX, y: content.minY + 4),
+                     font: .systemFont(ofSize: 9, weight: .semibold), color: Theme.accent, align: .right)
         }
     }
 
@@ -2682,9 +2828,9 @@ enum Renderer {
         row("S (lane)", "Exit freelane", left: true)
 
         section("COMBAT", left: true)
-        row("Space", "Fire lasers / plasma", left: true)
-        row("Q", "Cycle lasers ↔ plasma", left: true)
-        row("1 / 2", "Lasers / Plasma", left: true)
+        row("Space", "Fire primary weapon", left: true)
+        row("Q", "Cycle laser / plasma / pulse / rail", left: true)
+        row("1–4", "Lasers / Plasma / Pulse / Rail", left: true)
         row("B", "Fire missile (lock)", left: true)
         row("J", "Drop proximity mine", left: true)
         row("K", "Countermeasures (chaff)", left: true)
@@ -3130,7 +3276,7 @@ enum Renderer {
         case .pirate: return Theme.pirate
         case .trader: return Theme.trader
         case .police: return Theme.police
-        case .militia: return Theme.accentDim
+        case .militia: return Theme.militia
         case .alien: return Theme.alien
         }
     }
@@ -3145,10 +3291,10 @@ enum Renderer {
         case .containerShip: return NSColor(calibratedRed: 0.50, green: 0.80, blue: 0.55, alpha: 1)
         case .oreBarge: return NSColor(calibratedRed: 0.70, green: 0.55, blue: 0.35, alpha: 1)
         case .courier: return NSColor(calibratedRed: 0.55, green: 0.90, blue: 0.75, alpha: 1)
-        case .pirateRaider, .pirateGunship: return Theme.pirate
-        case .patrol, .interceptor: return Theme.police
-        case .militiaCutter: return Theme.accentDim
-        case .alienSkimmer, .alienWarden: return Theme.alien
+        case .pirateRaider, .pirateGunship, .pirateBomber: return Theme.pirate
+        case .patrol, .interceptor, .policeEnforcer: return Theme.police
+        case .militiaCutter, .militiaFrigate: return Theme.militia
+        case .alienSkimmer, .alienWarden, .alienStalker: return Theme.alien
         }
     }
 
@@ -3167,6 +3313,30 @@ enum Renderer {
         let f = max(0, min(1, frac))
         ctx.setFillColor(color.cgColor)
         ctx.fill(CGRect(x: rect.minX, y: rect.minY, width: rect.width * f, height: rect.height))
+    }
+
+    /// Compact bottom ticker (NEWS / RADIO): sized to text, capped width, centered.
+    private static func bottomTickerBar(
+        bounds: CGRect, y: CGFloat, text: String, font: NSFont, maxWidth: CGFloat
+    ) -> CGRect {
+        let padX: CGFloat = 20
+        let textW = (text as NSString).size(withAttributes: [.font: font]).width
+        let cap = min(maxWidth, bounds.width - 80)
+        let w = min(cap, max(160, textW + padX * 2))
+        return CGRect(x: (bounds.width - w) / 2, y: y, width: w, height: 22)
+    }
+
+    /// Ellipsize string so it fits `maxWidth` in the given font.
+    private static func truncateToWidth(_ text: String, font: NSFont, maxWidth: CGFloat) -> String {
+        let attr: [NSAttributedString.Key: Any] = [.font: font]
+        if (text as NSString).size(withAttributes: attr).width <= maxWidth { return text }
+        var s = text
+        while s.count > 4 {
+            s = String(s.dropLast())
+            let trial = s + "…"
+            if (trial as NSString).size(withAttributes: attr).width <= maxWidth { return trial }
+        }
+        return "…"
     }
 
     private static func drawLabeledBar(
