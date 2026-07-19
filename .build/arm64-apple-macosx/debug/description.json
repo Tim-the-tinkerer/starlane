@@ -1,0 +1,448 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.Starlane-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/sources",
+      "importPath" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/AudioManager.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/Entities.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/GameEngine.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/GameView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/GameWindowController.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/HelpWindowController.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/Renderer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/SaveGame.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/ShipArt.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/Theme.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/World.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "Starlane",
+      "moduleOutputPath" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Modules/Starlane.swiftmodule",
+      "objects" : [
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/AudioManager.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Entities.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameEngine.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameView.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameWindowController.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/HelpWindowController.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Renderer.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/SaveGame.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Theme.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/World.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx13.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "Starlane_main",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "starlane"
+      ],
+      "outputFileMapPath" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/AudioManager.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Entities.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameWindowController.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/HelpWindowController.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Renderer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/SaveGame.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Theme.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/World.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Modules/Starlane.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/timbestler/starlane/Sources/Starlane/AudioManager.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/Entities.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/GameEngine.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/GameView.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/GameWindowController.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/HelpWindowController.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/Renderer.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/SaveGame.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/ShipArt.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/Theme.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/World.swift"
+      ],
+      "tempsPath" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "Starlane" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "Starlane",
+      "-package-name",
+      "starlane",
+      "-c",
+      "/Users/timbestler/starlane/Sources/Starlane/AudioManager.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/Entities.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/GameEngine.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/GameView.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/GameWindowController.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/HelpWindowController.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/Renderer.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/SaveGame.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/ShipArt.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/Theme.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/World.swift",
+      "-I",
+      "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx13.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "Starlane_main",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "starlane",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "Starlane" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane-entitlement.plist"
+    },
+    "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/AudioManager.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/Entities.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/GameEngine.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/GameView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/GameWindowController.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/HelpWindowController.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/Renderer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/SaveGame.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/ShipArt.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/Theme.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/World.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/sources"
+    },
+    "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/AudioManager.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Entities.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameWindowController.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/HelpWindowController.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Renderer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/SaveGame.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Theme.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/World.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.product/Objects.LinkFileList"
+    },
+    "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+    }
+  }
+}

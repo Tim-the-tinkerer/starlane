@@ -1,0 +1,81 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "PackageStructure": ["<PackageStructure>"]
+  "Starlane-arm64-apple-macosx-debug.exe": ["<Starlane-arm64-apple-macosx-debug.exe>"]
+  "Starlane-arm64-apple-macosx-debug.module": ["<Starlane-arm64-apple-macosx-debug.module>"]
+  "main": ["<Starlane-arm64-apple-macosx-debug.exe>","<Starlane-arm64-apple-macosx-debug.module>"]
+  "test": ["<Starlane-arm64-apple-macosx-debug.exe>","<Starlane-arm64-apple-macosx-debug.module>"]
+default: "main"
+nodes:
+  "/Users/timbestler/starlane/Sources/Starlane/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane":
+    is-mutated: true
+commands:
+  "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane-entitlement.plist":
+    tool: write-auxiliary-file
+    inputs: ["<entitlement-plist>","<com.apple.security.get-task-allow>"]
+    outputs: ["/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane-entitlement.plist"]
+    description: "Write auxiliary file /Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane-entitlement.plist"
+
+  "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/timbestler/starlane/Sources/Starlane/AudioManager.swift","/Users/timbestler/starlane/Sources/Starlane/Entities.swift","/Users/timbestler/starlane/Sources/Starlane/GameEngine.swift","/Users/timbestler/starlane/Sources/Starlane/GameView.swift","/Users/timbestler/starlane/Sources/Starlane/GameWindowController.swift","/Users/timbestler/starlane/Sources/Starlane/HelpWindowController.swift","/Users/timbestler/starlane/Sources/Starlane/Renderer.swift","/Users/timbestler/starlane/Sources/Starlane/SaveGame.swift","/Users/timbestler/starlane/Sources/Starlane/ShipArt.swift","/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift","/Users/timbestler/starlane/Sources/Starlane/Theme.swift","/Users/timbestler/starlane/Sources/Starlane/World.swift"]
+    outputs: ["/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/sources"]
+    description: "Write auxiliary file /Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/sources"
+
+  "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/AudioManager.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Entities.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameEngine.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameView.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameWindowController.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/HelpWindowController.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Renderer.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/SaveGame.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Theme.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/World.swift.o"]
+    outputs: ["/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.product/Objects.LinkFileList"
+
+  "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Library/Developer/CommandLineTools/usr/bin/swiftc"]
+    outputs: ["/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/timbestler/starlane/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+
+  "<Starlane-arm64-apple-macosx-debug.exe>":
+    tool: phony
+    inputs: ["<Starlane-arm64-apple-macosx-debug.exe-CodeSigning>"]
+    outputs: ["<Starlane-arm64-apple-macosx-debug.exe>"]
+
+  "<Starlane-arm64-apple-macosx-debug.module>":
+    tool: phony
+    inputs: ["/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/AudioManager.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Entities.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameEngine.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameView.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameWindowController.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/HelpWindowController.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Renderer.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/SaveGame.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Theme.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/World.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Modules/Starlane.swiftmodule"]
+    outputs: ["<Starlane-arm64-apple-macosx-debug.module>"]
+
+  "C.Starlane-arm64-apple-macosx-debug.exe":
+    tool: shell
+    inputs: ["/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/AudioManager.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Entities.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameEngine.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameView.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameWindowController.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/HelpWindowController.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Renderer.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/SaveGame.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Theme.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/World.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.product/Objects.LinkFileList"]
+    outputs: ["/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/Starlane"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-L","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug","-o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane","-module-name","Starlane","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-alias","-Xlinker","_Starlane_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Library/Developer/CommandLineTools/usr/lib/swift-6.2/macosx","-target","arm64-apple-macosx13.0","-Xlinker","-add_ast_path","-Xlinker","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Modules/Starlane.swiftmodule","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g"]
+
+  "C.Starlane-arm64-apple-macosx-debug.exe-entitlements":
+    tool: shell
+    inputs: ["/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane-entitlement.plist"]
+    outputs: ["<Starlane-arm64-apple-macosx-debug.exe-CodeSigning>"]
+    description: "Applying debug entitlements to ./.build/arm64-apple-macosx/debug/Starlane"
+    args: ["codesign","--force","--sign","-","--entitlements","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane-entitlement.plist","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane"]
+
+  "C.Starlane-arm64-apple-macosx-debug.module":
+    tool: shell
+    inputs: ["/Users/timbestler/starlane/Sources/Starlane/AudioManager.swift","/Users/timbestler/starlane/Sources/Starlane/Entities.swift","/Users/timbestler/starlane/Sources/Starlane/GameEngine.swift","/Users/timbestler/starlane/Sources/Starlane/GameView.swift","/Users/timbestler/starlane/Sources/Starlane/GameWindowController.swift","/Users/timbestler/starlane/Sources/Starlane/HelpWindowController.swift","/Users/timbestler/starlane/Sources/Starlane/Renderer.swift","/Users/timbestler/starlane/Sources/Starlane/SaveGame.swift","/Users/timbestler/starlane/Sources/Starlane/ShipArt.swift","/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift","/Users/timbestler/starlane/Sources/Starlane/Theme.swift","/Users/timbestler/starlane/Sources/Starlane/World.swift","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/sources"]
+    outputs: ["/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/AudioManager.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Entities.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameEngine.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameView.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/GameWindowController.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/HelpWindowController.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Renderer.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/SaveGame.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Theme.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/World.swift.o","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Modules/Starlane.swiftmodule"]
+    description: "Compiling Swift Module 'Starlane' (12 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","Starlane","-emit-dependencies","-emit-module","-emit-module-path","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Modules/Starlane.swiftmodule","-output-file-map","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/output-file-map.json","-incremental","-c","@/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/sources","-I","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx13.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j8","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","Starlane_main","-swift-version","5","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","starlane"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/timbestler/starlane/Sources/Starlane/","/Users/timbestler/starlane/Package.swift","/Users/timbestler/starlane/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

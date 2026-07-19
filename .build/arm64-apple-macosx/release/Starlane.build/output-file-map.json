@@ -1,0 +1,79 @@
+{
+  "": {
+    "dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Starlane.d",
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Starlane.o",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/primary.swiftdeps"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/AudioManager.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/AudioManager.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/AudioManager~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/AudioManager.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/AudioManager.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/Entities.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Entities.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Entities~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Entities.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Entities.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/GameEngine.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameEngine.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameEngine~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameEngine.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameEngine.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/GameView.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameView.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameView~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameView.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameView.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/GameWindowController.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameWindowController.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameWindowController~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameWindowController.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/GameWindowController.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/HelpWindowController.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/HelpWindowController.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/HelpWindowController~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/HelpWindowController.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/HelpWindowController.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/Renderer.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Renderer.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Renderer~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Renderer.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Renderer.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/SaveGame.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/SaveGame.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/SaveGame~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/SaveGame.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/SaveGame.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/ShipArt.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/ShipArt.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/ShipArt~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/ShipArt.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/ShipArt.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/StarlaneApp.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/StarlaneApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/StarlaneApp.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/StarlaneApp.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/Theme.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Theme.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Theme~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Theme.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/Theme.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/World.swift": {
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/World.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/World~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/World.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/release/Starlane.build/World.dia"
+  }
+}
