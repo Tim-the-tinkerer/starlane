@@ -1,6 +1,6 @@
 # Starlane Help
 
-**Version 1.0.29**
+**Version 1.0.31**
 
 A Freelancer-style space adventure — trade, fight, dock, and freelane across the frontier.
 
@@ -10,12 +10,13 @@ A Freelancer-style space adventure — trade, fight, dock, and freelane across t
 |--------|------|
 | Turn | A/D or ←/→ |
 | Thrust / Brake | W/S or ↑/↓ |
-| Fire primary | Space (laser / plasma / pulse / rail — uses energy) |
-| Switch weapon | **Q** cycle · **1** laser · **2** plasma · **3** pulse · **4** rail |
-| Fire missile | B (auto-lock hostiles within 520m) |
+| Fire primary | Space — hangar-fitted gun (energy) |
+| Switch gun | **Q** cycle owned hangar guns · **1–4** quick-select owned |
+| B-mode fire | **B** — classic missiles **or** hangar secondary |
+| Toggle B-mode | **5** — switch Classic missiles ↔ Hangar secondary |
 | Target | T or Tab |
 | Scan / identify | Hold **I** (in range) — cargo, faction, wanted |
-| Drop mine | **J** |
+| Drop mine | **J** (Outfit mine stock) |
 | Countermeasures | **K** (break missile locks) |
 | Freelane boost | **L** (Ancient Lane Core) |
 | Nav waypoint | V or N |
@@ -45,19 +46,53 @@ When docked, use **1–6** or **←/→** to switch tabs (Warehouse only at Free
 2. **Trade** — buy (Enter) / sell (F); −/+ quantity
 3. **Warehouse** — Freeport 7 only — deposit (Enter) / withdraw (F)
 4. **Missions** — accept and turn in contracts
-5. **Outfit** — upgrades, paints, wingman roles, hulls, missiles, mines, chaff, insurance, loan, protection (scrollable list)
+5. **Outfit** — Mk amplifiers, wingman, **Hull Role / Career**, missiles, mines, chaff, insurance, loan, protection, **Ship Hangar** (livery is hangar-only)
 6. **Undock**
 
-## Weapons
+## How systems fit together
 
-| Mode | Key | Role |
-|------|-----|------|
-| **Lasers** | 1 | Balanced bolts |
-| **Plasma** | 2 | Slow, hard hit, more energy |
-| **Pulse Array** | 3 | Twin rapid bolts, cheap energy |
-| **Rail Lance** | 4 | Long-range heavy slug |
+| System | What it does |
+|--------|----------------|
+| **Ship Hangar** (docked Outfit) | Buy & fit **guns**, frame parts, livery — **this is your combat primary** |
+| **Hull Role / Career** (Outfit) | Hybrid / Freighter / Interceptor — big cargo & combat role; **Mk kept**, hangar resets to preset → **re-fit after swap** |
+| **Gun Amplifiers Mk** (Outfit) | Scales hangar primary damage (not a separate gun type) |
+| **Drive / Shield / Power Amplifiers Mk** | Stack on hangar Engines / Shields / Utility energy |
+| **Cargo Hold Mk** | Hold size only (no hangar cargo slot) |
+| **Hangar hull/wings/engine/shield** | Soft **frame bonuses** on top of Mk stats (not the same as career) |
+| **Missiles (Outfit)** | Ammo for **B** in classic mode (and seeker pods if racks have stock) |
+| **B-mode (key 5)** | **Classic missiles** **or** **hangar secondary** |
+| **Mines / Chaff (Outfit)** | **J** / **K** stock (hangar Proximity Mines secondary can also deploy on B) |
 
-**Q** cycles all four. Weapon Mk upgrades improve every mode. Interceptors favor rate of fire; freighters hit softer.
+## Ship Hangar (docked only)
+
+Open **Outfit → Ship Hangar**. Parts cost credits; **owned** parts refit free.
+
+| Control | Action |
+|---------|--------|
+| ← / → | Hardpoint (Hull · Wings · Engines · Primary · Secondary · Shields · Utility · Livery) |
+| ↑ / ↓ | Browse |
+| Enter | Buy / fit |
+| R | Randomize (pays for unowned) |
+| Esc | Finish → station |
+
+### Primary guns (Space / Q / 1–4)
+
+| Gun | Cost | Role |
+|-----|------|------|
+| **Pulse Laser** | free | Default |
+| **Mass Driver** | 1,800 cr | Hard slugs |
+| **Plasma Repeater** | 2,600 cr | Plasma orbs |
+| **Rail Lance** | 4,200 cr | Heavy long shot |
+| **Focus Beam** | 5,500 cr | Rapid energy pulses |
+
+### B-key modes (**5** toggles)
+
+| Mode | Behavior |
+|------|----------|
+| **Classic missiles** | Rack ammo + lock (**T**). Buy reloads in Outfit. |
+| **Hangar secondary** | Fitted secondary (seekers / scatter / torpedo / mines). Buy/fit in hangar. |
+
+HUD shows `B:MSL n/10` or `B:Seeker Pods` (etc.). If hangar mode has nothing fitted, press **5** to return to classic missiles.
 
 ### Faction ships you'll meet
 
@@ -80,7 +115,7 @@ When docked, use **1–6** or **←/→** to switch tabs (Warehouse only at Free
 
 ## Space weather
 
-Colored regions in open space (also on the system map). HUD strip shows active effects (no full-screen edge tint).
+Colored regions in open space (also on the system map). HUD strip shows active effects; a light screen grade/vignette tints hazards without hiding ships.
 
 | Zone | Effect |
 |------|--------|
@@ -101,10 +136,11 @@ Freelanes still work inside weather, but radiation and ion storms still hurt. Pr
 - **Wrecks & blueprints** — salvage scrap and ship mods
 - **Voidreach** — outer sector via hidden wormhole in Nyx (see [VOIDREACH.md](VOIDREACH.md))
 
-## Wingmen & hulls
+## Wingmen & hull roles
 
 - Outfit **−/+** on wingman row: **Gunner**, **Scout**, **Freighter Tug** (painted like you)
-- Hulls: Hybrid · Freighter · Interceptor (mines/chaff racks and missile punch scale by class)
+- **Hull Role / Career** (Outfit): Hybrid · Freighter · Interceptor — mines/chaff racks and missile punch scale by career
+- Hangar **Hull** is a modular frame (look + soft stats), not the same as career
 
 ## Faction notes
 
@@ -122,6 +158,7 @@ Freelanes still work inside weather, but radiation and ion storms still hurt. Pr
 - **Top center** — campaign / missions, weather, race timer, compass (stacked, no overlap)
 - **Bottom** — compact centered **NEWS** / **RADIO** tickers (not full-width); control hints
 - **Flash toasts** — lower band so they don’t cover the story strip
+- **Combat FX** — glowing bolts, soft particles, thrust-linked engine plumes (visual only)
 
 ## Gameplay loop
 
@@ -131,7 +168,7 @@ Freelanes still work inside weather, but radiation and ion storms still hurt. Pr
 3. Mine ore, scan and fight, take contracts.
 4. Chart systems, planets, wrecks, and anomalies.
 5. Watch NEWS for markets, raids, and discoveries.
-6. Outfit for riskier routes (Cinder, Umbra, dens, Voidreach).
+6. Outfit Mk amps + hangar guns for riskier routes (Cinder, Umbra, dens, Voidreach).
 
 ## Systems
 
@@ -143,7 +180,7 @@ Freelanes still work inside weather, but radiation and ion storms still hurt. Pr
 
 - **3 manual slots** + **autosave on every dock**
 - Folder: `~/Documents/Starlane/`
-- Older saves load with safe defaults for new fields (mines, investments, pulse/rail stats, etc.)
+- Older saves load with safe defaults for new fields (mines, investments, hangar loadout, secondary mode, etc.)
 
 ## Story (light campaign)
 

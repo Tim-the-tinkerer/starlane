@@ -60,6 +60,18 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/PartsCatalog.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDesign.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDrawing.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift"
         },
         {
@@ -92,6 +104,9 @@
         "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Renderer.swift.o",
         "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/SaveGame.swift.o",
         "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/PartsCatalog.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDesign.swift.o",
+        "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDrawing.swift.o",
         "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o",
         "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Theme.swift.o",
         "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/World.swift.o"
@@ -179,6 +194,18 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/PartsCatalog.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDesign.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDrawing.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o"
         },
         {
@@ -205,6 +232,9 @@
         "/Users/timbestler/starlane/Sources/Starlane/Renderer.swift",
         "/Users/timbestler/starlane/Sources/Starlane/SaveGame.swift",
         "/Users/timbestler/starlane/Sources/Starlane/ShipArt.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/PartsCatalog.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDesign.swift",
+        "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDrawing.swift",
         "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift",
         "/Users/timbestler/starlane/Sources/Starlane/Theme.swift",
         "/Users/timbestler/starlane/Sources/Starlane/World.swift"
@@ -233,6 +263,9 @@
       "/Users/timbestler/starlane/Sources/Starlane/Renderer.swift",
       "/Users/timbestler/starlane/Sources/Starlane/SaveGame.swift",
       "/Users/timbestler/starlane/Sources/Starlane/ShipArt.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/PartsCatalog.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDesign.swift",
+      "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDrawing.swift",
       "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift",
       "/Users/timbestler/starlane/Sources/Starlane/Theme.swift",
       "/Users/timbestler/starlane/Sources/Starlane/World.swift",
@@ -359,6 +392,18 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/PartsCatalog.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDesign.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDrawing.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift"
         },
         {
@@ -405,6 +450,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/PartsCatalog.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/Renderer.swift.o"
         },
         {
@@ -414,6 +463,14 @@
         {
           "kind" : "file",
           "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDesign.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDrawing.swift.o"
         },
         {
           "kind" : "file",

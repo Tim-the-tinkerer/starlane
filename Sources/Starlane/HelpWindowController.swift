@@ -49,22 +49,26 @@ final class HelpWindowController: NSWindowController {
     required init?(coder: NSCoder) { nil }
 
     private static let helpText = """
-    STARLANE  1.0.29
+    STARLANE  1.0.31
     A Freelancer-style space adventure
 
     STORY
     The corporate wars left the frontier open. You are an independent
     pilot with a light freighter, a laser battery, and a debt that will
     not wait. Trade between systems, take contracts, hunt pirates, raid
-    dens, and build a ship that can survive the Cinder lanes.
+    dens, customize your modular ship in the hangar, and survive Cinder.
 
     CONTROLS
     Turn ............... A/D or ←/→
     Thrust / Brake ..... W/S or ↑/↓
-    Fire primary ....... Space (laser / plasma / pulse / rail — energy)
-    Switch weapon ...... Q cycle · 1 laser · 2 plasma · 3 pulse · 4 rail
-                         Pulse = rapid twin bolts · Rail = long heavy slug
-    Fire missile ....... B (auto-lock hostiles within 520m; 10 max)
+    Fire primary ....... Space = hangar-fitted gun (buy at dock Hangar)
+    Switch hangar gun .. Q / 1–4 among owned guns (Pulse Laser free)
+    B-mode fire ........ B = classic missiles OR hangar secondary
+    Toggle B-mode ...... 5 = Classic MSL ↔ Hangar secondary
+    Gun Amplifiers Mk .. Outfit — scale hangar primary damage
+    Drive/Shield/Power . Outfit Mk amps — stack on hangar modules
+    Ship Hangar ........ Hull, wings, engines, guns, secondary, shields, utility, livery
+    Outfit vs Hangar ... Outfit = amps/ammo/services/career · Hangar = modules & weapons
     Target hostiles .... T or Tab
     Nav waypoint ....... V or N (cycle stations, gates, missions)
     Clear nav .......... C
@@ -79,7 +83,7 @@ final class HelpWindowController: NSWindowController {
     Freelane hijack .... Pirate fire or close boarding drops you instantly
     Mine / salvage ..... R (or F near rock / wreck)
     Scan / identify .... Hold I (target in range) — cargo, faction, wanted
-    Drop mine .......... J (proximity; freelane = chaos)
+    Drop mine .......... J (Outfit mine stock; freelane = chaos)
     Countermeasures .... K (chaff breaks missile locks)
     Freelane boost ..... L (Ancient Lane Core — mystery reward)
     Trade route pin .... U (flight) · Galaxy map: pick sell station + U
@@ -114,7 +118,7 @@ final class HelpWindowController: NSWindowController {
     Turrets fire on law and clean pilots. Dock if dirty, pirate rep ≥ 15,
     or under protection. Den markets sell cheap guns; dirty jobs available.
 
-    SPACE WEATHER (fly into colored regions — HUD strip shows effects)
+    SPACE WEATHER (zones + HUD strip + light screen grade)
     Nebula ............. Sensors degraded
     Radiation .......... Continuous shield/hull damage
     Ion storm .......... Energy drain · slower weapons
@@ -126,6 +130,7 @@ final class HelpWindowController: NSWindowController {
     HUD
     Top center ......... Campaign / missions · weather · race · compass (stacked)
     Bottom ............. Compact NEWS / RADIO tickers (centered, not full-width)
+    Combat FX .......... Glowing bolts · soft particles · thrust-linked engines
 
     CONTRACTS
     Timed cargo ........ ⏱ Live Food/Medical runs — spoil if late
@@ -152,10 +157,19 @@ final class HelpWindowController: NSWindowController {
     4. Lane War — destroy a capital (or finish station defense)
     Ironman .............. Death wipes ironman saves; finish story for Ironman Ace
 
+    SHIP HANGAR (Spacecraft Builder) — docked only
+    Open ............... Outfit → Ship Hangar (at a station)
+    ←/→ ................ Hardpoint (hull, wings, engines, primary, secondary,
+                         shields, utility, livery)
+    ↑/↓ · Enter ........ Browse · buy/fit (credits) · R randomize (costs) · Esc finish
+    Livery ............. Ship colors live here only (no Outfit paint row)
+    Secondaries ........ B + hangar mode (key 5) for seekers/scatter/torp/mines
+    Owned parts ........ Refit free after first purchase
+
     DOCKED STATION
     1–6 or ←/→ ......... Switch tabs (Status, Trade, Warehouse, Missions, Outfit, Undock)
     ↑/↓ ................ Select commodity / mission / upgrade (Outfit scrolls)
-    − / + .............. Change trade quantity (or cycle paint / ship hull / wingman)
+    − / + .............. Trade qty · wingman role · Hull Role / Career
     Enter .............. Buy / Accept / Upgrade / Undock
     F .................. Sell (Trade) / withdraw warehouse / shields (Status)
     Invest ............. Status tab, Enter (when hull is full) — permanent stake
@@ -177,12 +191,17 @@ final class HelpWindowController: NSWindowController {
     Clear warrants ...... Dock a Militia station → Outfit “Clear Wanted” or Status Enter
     Dirty pilots ........ Black-market docks open special stock (Umbra, dens, Night Market…)
 
-    SHIPS (Outfitter)
-    Hybrid Fighter ...... Balanced starter
+    HULL ROLE / CAREER (Outfit — not hangar Hull)
+    Hybrid Fighter ...... Balanced starter career
     Bulk Freighter ...... Huge hold, tough, slower guns (4500 cr cash or loan)
-    Interceptor ......... Hard lasers & speed, tiny hold (5200 cr)
-    Mk upgrades ......... Transfer when you buy or swap hulls
-    Mines / chaff ....... Rack size scales by hull class
+    Interceptor ......... Hard guns & speed, tiny hold (5200 cr)
+    Mk upgrades ......... Kept when you buy or swap careers
+    Hangar loadout ...... Resets to class preset — re-fit owned parts after swap
+    Mines / chaff ....... Rack size scales by career
+
+    GRAPHICS (1.0.31)
+    Pure CoreGraphics — additive weapon glows, soft particles, colored starfield,
+    modular ship detail, weather screen grade, faction dock chrome.
 
     SYSTEMS
     Frontier ........... Solara, Vesper, Ironreach, Cinder, Azurel,
@@ -193,5 +212,7 @@ final class HelpWindowController: NSWindowController {
     Systems are large — freelanes are the intended long-range transit.
     Steer around radiation belts when you can; HUD shows live weather rates.
     Older saves load safely (missing fields get defaults).
+    After rebuilding, launch ~/Applications/Starlane.app (or swift run).
     """
+
 }

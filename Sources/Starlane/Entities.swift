@@ -138,7 +138,27 @@ struct ShipStats: Codable {
     }
 }
 
-/// Primary directed-energy mode (Space / Q). Missiles are separate (B).
+/// What **B** fires: classic rack missiles vs hangar secondary hardpoint.
+enum SecondaryFireMode: String, Codable, CaseIterable {
+    case classicMissiles
+    case hangarSecondary
+
+    var shortLabel: String {
+        switch self {
+        case .classicMissiles: return "MSL"
+        case .hangarSecondary: return "HANGAR"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .classicMissiles: return "Classic missiles"
+        case .hangarSecondary: return "Hangar secondary"
+        }
+    }
+}
+
+/// Legacy DE mode mirror (hangar primary is authoritative for Space).
 enum WeaponMode: String, Codable, CaseIterable {
     case laser
     case plasma
@@ -227,6 +247,20 @@ enum ShipPaint: String, CaseIterable, Codable {
         case .solarGold, .nebulaViolet: return 600
         case .cinderRed, .voidBlack: return 750
         case .umbraChrome: return 1000
+        }
+    }
+
+    /// Maps Starlane liveries onto Spacecraft Builder paint part IDs.
+    var builderPaintID: String {
+        switch self {
+        case .arctic: return "paint_ice"
+        case .voidBlack: return "paint_void"
+        case .solarGold: return "paint_solar"
+        case .nebulaViolet: return "paint_nebula"
+        case .cinderRed: return "paint_crimson"
+        case .laneCyan: return "paint_cobalt"
+        case .militiaOlive: return "paint_emerald"
+        case .umbraChrome: return "paint_void"
         }
     }
 
@@ -433,9 +467,9 @@ enum PlayerShipClass: String, Codable, CaseIterable {
 
     var blurb: String {
         switch self {
-        case .hybrid: return "Balanced combat freighter — starter hull"
-        case .freighter: return "Huge hold, tough plates, slower guns"
-        case .interceptor: return "Hard lasers & speed, tiny cargo bay"
+        case .hybrid: return "Balanced combat freighter — starter career"
+        case .freighter: return "Hauler career — huge hold, tough, slower guns"
+        case .interceptor: return "Dogfighter career — hard guns & speed, tiny hold"
         }
     }
 
@@ -858,6 +892,8 @@ struct Player: Codable {
     static let maxMissiles = 10
     static let missilePackSize = 5
     static let missilePackCost = 450
+    /// B-key mode: classic rack missiles vs hangar secondary. Optional for old saves.
+    var secondaryFireMode: SecondaryFireMode? = .classicMissiles
     /// Proximity mines (hull class changes rack size).
     /// Optional for save back-compat (pre-1.0.21).
     var mines: Int? = 3
@@ -935,6 +971,11 @@ struct Player: Codable {
     var freelaneRecords: [String: FreelaneRaceRecord]? = nil
     /// Count of distinct lanes with a PB (achievement helper).
     var freelanePBsSet: Int? = nil
+    /// Modular hangar loadout (part slot → part id). Optional for old saves.
+    var shipDesignLoadout: [String: String]? = nil
+    var shipDesignName: String? = nil
+    /// Part IDs purchased in the hangar (re-equip free). Optional for old saves.
+    var ownedShipParts: Set<String>? = nil
     var missionsCompleted: Int = 0
     var discoveryCreditsEarned: Int = 0
     /// Campaign stage 0...3 active, 4 = complete.
@@ -1080,6 +1121,9 @@ struct Player: Codable {
             // Applied via tractorRangeBonus
         }
 
+        // Hangar frame bonuses (modular hull/wings/engine/shield/utility) — soft stack on Mk
+        applyHangarFrameBonuses()
+
         hull = min(hull, stats.maxHull)
         shield = min(shield, stats.maxShield)
         energy = min(energy, stats.maxEnergy)
@@ -1088,7 +1132,57 @@ struct Player: Codable {
         cmStock = min(cmStock, maxCMForClass)
     }
 
+    /// Soft combat bonuses from the Ship Hangar design (keeps Mk upgrades as the core path).
+    private mutating func applyHangarFrameBonuses() {
+        let mod = shipDesign.computeStats()
+        // Baselines ≈ stock interceptor modular frame
+        let armorBonus = max(0, mod.armor - 100)
+        let shieldBonus = max(0, mod.maxShield - 50)
+        let thrustBonus = max(0, mod.thrust - 30)
+        let speedBonus = max(0, mod.maxSpeed - 180)
+        let turnBonus = max(0, mod.turnRate - 1.2)
+        let energyBonus = max(0, mod.energy - 100)
+        let regenBonus = max(0, mod.energyRegen - 10)
+
+        stats.maxHull += Float(armorBonus) * 0.35
+        stats.maxShield += Float(shieldBonus) * 0.45
+        stats.thrust += Float(thrustBonus) * 2.2
+        stats.maxSpeed += Float(speedBonus) * 0.35
+        stats.turnRate += Float(turnBonus) * 0.25
+        stats.maxEnergy += Float(energyBonus) * 0.35
+        stats.energyRegen += Float(regenBonus) * 0.4
+        if mod.hasBoost {
+            stats.thrust *= 1.06
+            stats.maxSpeed *= 1.04
+        }
+        if mod.hasRepair {
+            stats.shieldRegen *= 1.12
+        }
+    }
+
     /// Fill defaults for optional fields omitted by older save files.
+    /// Active modular design (from hangar or class preset).
+    var shipDesign: ShipDesign {
+        get {
+            if let raw = shipDesignLoadout, !raw.isEmpty {
+                var d = ShipDesign.default
+                d.name = shipDesignName ?? shipClass.displayName
+                for (k, v) in raw {
+                    if let slot = PartSlot(rawValue: k) { d.loadout[slot] = v }
+                }
+                return d
+            }
+            return ShipDesign.preset(for: shipClass, paint: paintJob)
+        }
+        set {
+            shipDesignName = newValue.name
+            var raw: [String: String] = [:]
+            for (slot, id) in newValue.loadout { raw[slot.rawValue] = id }
+            shipDesignLoadout = raw
+            newValue.saveForStarlane()
+        }
+    }
+
     mutating func normalizeSaveDefaults() {
         if mines == nil { mines = min(3, maxMinesForClass) }
         if countermeasures == nil { countermeasures = min(3, maxCMForClass) }
@@ -1102,6 +1196,63 @@ struct Player: Codable {
         mineStock = min(mineStock, maxMinesForClass)
         cmStock = min(cmStock, maxCMForClass)
         missiles = min(missiles, Player.maxMissiles)
+        if shipDesignLoadout == nil {
+            let preset = ShipDesign.preset(for: shipClass, paint: paintJob)
+            shipDesign = preset
+        }
+        if secondaryFireMode == nil {
+            secondaryFireMode = .classicMissiles
+        }
+        if ownedShipParts == nil {
+            // Free starter kit only — premium hangar guns must be bought
+            var owned = ShipDesign.freeStarterPartIDs
+            // Grant non-weapon parts already on the ship so frames aren't re-billed
+            if let raw = shipDesignLoadout {
+                for (slot, id) in raw {
+                    if slot == PartSlot.weapon.rawValue {
+                        // Only free laser is auto-owned among primaries
+                        if id == "wpn_laser" || id == "wpn_none" { owned.insert(id) }
+                    } else if slot == PartSlot.secondary.rawValue {
+                        if id == "sec_none" { owned.insert(id) }
+                    } else {
+                        owned.insert(id)
+                    }
+                }
+            }
+            ownedShipParts = owned
+        }
+        // If fitted primary isn't owned, fall back to free laser
+        if let wid = shipDesignLoadout?[PartSlot.weapon.rawValue],
+           ShipDesign.purchasablePrimaryWeaponIDs.contains(wid),
+           ownedShipParts?.contains(wid) != true {
+            shipDesignLoadout?[PartSlot.weapon.rawValue] = "wpn_laser"
+        }
+    }
+
+    /// Currently fitted hangar primary weapon part (nil if unarmed).
+    var hangarPrimaryWeapon: ShipPart? {
+        guard let id = shipDesign.loadout[.weapon],
+              let p = PartsCatalog.part(id: id),
+              p.weaponType != .none else { return nil }
+        return p
+    }
+
+    /// Owned primary weapons available to cycle in flight (always includes free laser if owned).
+    var ownedHangarPrimaries: [ShipPart] {
+        PartsCatalog.primaryWeapons.filter { ownedShipParts?.contains($0.id) == true || $0.id == "wpn_laser" }
+    }
+
+    var bKeyMode: SecondaryFireMode {
+        get { secondaryFireMode ?? .classicMissiles }
+        set { secondaryFireMode = newValue }
+    }
+
+    /// Fitted & owned hangar secondary, if any.
+    var hangarSecondaryWeapon: ShipPart? {
+        guard let id = shipDesign.loadout[.secondary], id != "sec_none",
+              let p = PartsCatalog.part(id: id), p.weaponType != .none else { return nil }
+        guard ownedShipParts?.contains(id) == true else { return nil }
+        return p
     }
 
     /// Interceptors carry more ordnance; freighters fewer mines but more chaff.
@@ -1847,6 +1998,8 @@ enum GamePhase: Equatable {
     case systemMap
     /// Free-fly camera (world frozen) for screenshots / ship art.
     case photo
+    /// Modular ship hangar (Spacecraft Builder) — customize loadout look.
+    case hangar
     /// Pick a manual slot (1...3) to write.
     case saveSlots
     /// Pick autosave or slot 1...3 to load.

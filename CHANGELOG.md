@@ -6,6 +6,52 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ---
 
+## [1.0.31] — 2026-07-20
+
+### Added
+- **Full visual pass (CPU CoreGraphics)** — richer combat FX, space, ships, and dock chrome without Metal
+  - **Projectiles** — additive glow; kind-specific cores (laser tip, plasma blob, pulse dots, rail streak, missile diamond + exhaust)
+  - **Particles** — soft additive cores; explosion flash + smoke; hit sparks; jump violet burst
+  - **Thrust-linked engines** — glow and trail ramp with W/↑/autopilot; trails tint from hangar engine color
+  - **Starfield depth** — cool / white / warm stars, rare bright giants
+  - **Weather grade** — light full-screen tint + edge vignette in hazards (ships stay readable)
+  - **Dock UI chrome** — faction header gradient, system-tint side rails, deeper vignette
+  - **Shield fill + target brackets** — soft shield bubble; corner reticle instead of plain circle
+- **Modular ship art polish** — panel seams, wing leading edges, thruster bells, cockpit specular, damage scorch
+
+### Changed
+- **Outfit vs Hangar ownership** clarified in UI and docs
+  - Outfit = Mk **amplifiers**, cargo, ammo, services, **Hull Role / Career**
+  - Hangar = modules, primary/secondary guns, livery
+  - Drive / Shield / Power Mk renamed as amplifiers that **stack** on hangar modules
+- **Hull Role / Career** (Outfit row) — Hybrid / Freighter / Interceptor; Mk kept; hangar loadout resets to class preset → re-fit owned parts after swap
+- **B-mode (key 5)** — Classic missiles (Outfit ammo) **or** hangar secondary; separate secondary cooldown
+- Livery is hangar-only (Outfit paint row removed)
+- Documentation / Help / README / VOIDREACH / AppInfo aligned with hangar-first combat and 1.0.31 graphics
+
+### Fixed
+- Stale Outfit labels and help copy that still referred to Outfit paint or classic primary modes as the only guns
+
+---
+
+## [1.0.30] — 2026-07-20
+
+### Added
+- **Spacecraft Builder integration** — modular hangar inside Starlane
+  - **Docked only** via Outfitter → **Ship Hangar**
+  - Swap hull, wings, engines, weapons, shields, utility, livery (same catalog as Spacecraft Builder)
+  - **Part install costs** (rarity × hardpoint); owned parts re-equip free
+  - Live preview + stats; design saved with pilot and mirrored to shared hangar storage
+- **New player ship graphics** — modular CG silhouettes (Scout / Interceptor / Gunship / Frigate / Needle + wing & engine variants) from the builder art pipeline
+
+### Changed
+- Player, ghost, and title hero ship use modular hangar art instead of the old fixed fighter outline
+- **Hangar weapons fire in combat** — Space uses fitted primary; Q/1–4 cycle owned hangar guns
+- Only **Pulse Laser** is free; Mass Driver / Plasma / Rail / Beam (and secondaries) cost hangar credits
+- **Unified systems** — Outfit “Gun Amplifiers Mk” scales hangar guns; hangar frame parts add soft flight bonuses; HUD/status/How-to-Play/controls match hangar-first combat
+
+---
+
 ## [1.0.29] — 2026-07-19
 
 ### Changed
@@ -133,6 +179,8 @@ Earlier releases: Voidreach / Vael tech, reputation & wanted, hull classes, pain
 
 ---
 
+[1.0.31]: #1031---2026-07-20
+[1.0.30]: #1030---2026-07-20
 [1.0.29]: #1029---2026-07-19
 [1.0.28]: #1028---2026-07-19
 [1.0.27]: #1027---2026-07-19

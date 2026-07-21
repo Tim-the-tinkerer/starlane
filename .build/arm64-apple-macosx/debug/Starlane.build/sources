@@ -7,6 +7,9 @@
 /Users/timbestler/starlane/Sources/Starlane/Renderer.swift
 /Users/timbestler/starlane/Sources/Starlane/SaveGame.swift
 /Users/timbestler/starlane/Sources/Starlane/ShipArt.swift
+/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/PartsCatalog.swift
+/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDesign.swift
+/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDrawing.swift
 /Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift
 /Users/timbestler/starlane/Sources/Starlane/Theme.swift
 /Users/timbestler/starlane/Sources/Starlane/World.swift

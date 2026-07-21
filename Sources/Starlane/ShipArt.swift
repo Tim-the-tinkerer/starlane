@@ -57,10 +57,39 @@ enum ShipArt {
     }
 
     /// Draw a full ship at the current CTM origin, oriented along +X, scaled so hull ≈ `scale` units long.
+    /// When `modularDesign` is set and style is player-class, uses Spacecraft Builder graphics.
     static func draw(
         ctx: CGContext, style: Style, scale: CGFloat, accent: NSColor,
-        time: Float = 0, paint: ShipPaint = .arctic
+        time: Float = 0, paint: ShipPaint = .arctic,
+        modularDesign: ShipDesign? = nil,
+        thrustGlow: CGFloat = 0.35,
+        shieldPulse: CGFloat = 0,
+        damaged: CGFloat = 0
     ) {
+        // Modular player ship (Spacecraft Builder art)
+        if let design = modularDesign, style == .player || style == .interceptor || style == .freighter {
+            var stats = design.computeStats()
+            // Keep paint accent if design livery is generic
+            if design.part(for: .paint) == nil {
+                stats.hullColor = paint.hull
+                stats.accentColor = paint.accent
+            }
+            // ~scale length: modular hull spans ~40 units in local space
+            let s = scale / 18
+            ShipDrawing.draw(
+                ctx: ctx,
+                stats: stats,
+                options: ShipDrawing.Options(
+                    scale: s,
+                    thrustGlow: thrustGlow + 0.15 * CGFloat(0.5 + 0.5 * sin(time * 12)),
+                    shieldPulse: shieldPulse,
+                    damaged: damaged,
+                    rotateToPlusX: true
+                )
+            )
+            return
+        }
+
         ctx.saveGState()
         // Normalize designs are ~28 units long nose-to-tail; scale to requested size.
         let s = scale / 14

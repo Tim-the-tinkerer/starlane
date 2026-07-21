@@ -1,36 +1,62 @@
 # Starlane
 
-**Version 1.0.29**
+**Version 1.0.31**
 
-A Freelancer-style space adventure for macOS. Pilot across the frontier — trade, ride freelanes, race your own ghost, fight pirates, raid dens, take contracts, chart anomalies, and outfit a ship that can survive Cinder and beyond.
+A Freelancer-style space adventure for macOS. Pilot across the frontier — trade, ride freelanes, race your own ghost, fight pirates, raid dens, take contracts, chart anomalies, and outfit a modular ship that can survive Cinder and beyond.
 
 See [CHANGELOG.md](CHANGELOG.md) for full release notes. In-app **Help → Starlane Help** and [docs/HELP.md](docs/HELP.md) cover controls and systems.
 
 ## Highlights
 
+- **Ship Hangar (Spacecraft Builder)** — modular hulls, wings, engines, weapons, shields, utility, livery
+- **Outfit Mk amplifiers** — Gun / Drive / Shield / Power / Hold stack on hangar modules
+- **Hull Role / Career** — Hybrid · Freighter · Interceptor (big cargo & combat tradeoffs)
 - **Large systems** — free flight is a long haul; **freelanes** are the fast path
-- **Weapons** — lasers, plasma, pulse array, rail lance (**Q** / **1–4**)
+- **Hangar combat weapons** — Space primary · Q/1–4 owned guns · B secondary / missiles · **5** toggles B-mode
 - **Faction fleets** — pirate / police / militia / Vael hulls with distinct guns and colors
 - **Enemy bases** — pirate dens with turrets, garrisons, den markets, and dirty jobs
+- **Graphics polish** — additive combat FX, thrust-linked engines, colored starfields, weather grade, dock chrome
 - **Freelane time trials** — personal bests and a gold **ghost** of your best lap
 - **Stations** — trade, missions, outfitter, repairs, investment, Freeport 7 warehouse
-- **Combat** — missiles, mines, countermeasures; hull classes change the feel
+- **Combat** — hangar guns, classic missiles, mines, countermeasures
 - **Contracts** — bounties (scan first), timed cargo, smuggling, escorts, freelane raids, surveys
 - **Space weather** — nebulae, radiation, ion storms, dust, cryo, grav sheer, EM blackout
 - **Exploration** — planets, wrecks, anomalies, lane mystery → Ancient Lane Core
 - **Progression** — reputation/wanted, wingman roles, insurance, freighter loans, achievements
 - **Saves** — 3 slots + autosave on dock in `~/Documents/Starlane/`
 
-## What’s new in 1.0.29
+## What’s new in 1.0.31
 
-- **Compact NEWS / RADIO ticker** — centered, size-to-text (no full-width bar)
-- **Docs refresh** — README, HELP, VOIDREACH, and in-app Help match dens, weapons, and HUD
+- **Full visual pass** — projectile glows, soft particles, explosion flash, thrust-reactive engines, richer modular ship art, colored stars, weather screen grade, dock chrome
+- **Outfit vs Hangar** — clear split: Outfit amps/ammo/services/career · Hangar modules & guns · B-mode classic missiles ↔ hangar secondary (**5**)
+- **Hull Role / Career** labeling — Mk kept; re-fit hangar parts after career swap
 
-**1.0.28** — Pulse Array, Rail Lance, faction Bomber / Enforcer / Frigate / Stalker  
-**1.0.27** — Pirate dens (Bloodwake, Raider’s Scar, Mute Corsair, Hullbreaker)  
-**1.0.26** — Freelane time trials & ghost PB  
+**1.0.30** — Spacecraft Builder hangar · modular player art · hangar guns in combat  
+**1.0.29** — Compact NEWS ticker · docs refresh  
+**1.0.28** — Faction Bomber / Enforcer / Frigate / Stalker  
 
 Full history: [CHANGELOG.md](CHANGELOG.md).
+
+## Outfit vs Hangar
+
+| Where | What you buy |
+|-------|----------------|
+| **Outfit** | Mk amplifiers (gun / drive / shield / power / cargo), repair, wingman, **Hull Role / Career**, fine, missiles, insurance, loan, protection, mines, chaff, **Ship Hangar** entry |
+| **Ship Hangar** (docked only) | Hull frame, wings, engines, **primary gun**, **secondary**, shields, utility, **livery** |
+
+- **Space** fires the hangar primary. **Q / 1–4** cycle owned hangar guns (Pulse Laser free).
+- **B** fires classic missiles **or** hangar secondary; press **5** to toggle.
+- Career swap keeps Mk levels but applies a class hangar preset — **re-fit owned parts** after.
+
+## Ship Hangar
+
+**Only while docked** (Outfit → Ship Hangar). Parts cost credits; owned parts re-equip free.
+
+1. Dock → **Outfit** → **Ship Hangar**
+2. **←/→** hardpoint · **↑/↓** browse · **Enter** buy/fit · **R** randomize · **Esc** finish
+3. Your ship in space, ghost races, and the title screen use the hangar design
+
+Standalone companion: `../spacecraft-builder` (same parts catalog & art).
 
 ## Freelane time trials
 
@@ -60,14 +86,17 @@ Requires **macOS 13+** and **Swift 5.9+**.
 
 Launches in **full screen** by default; the mouse cursor is hidden while the game is focused in full screen (clicks still work).
 
+**After code changes:** always run `./build-app.sh` (or `swift run`) so you are not on a stale `Starlane.app`.
+
 ## Controls (essentials)
 
 | Action | Keys |
 |--------|------|
 | Fly | WASD / arrows |
-| Fire primary | Space |
-| Weapon select | **Q** cycle · **1** laser · **2** plasma · **3** pulse · **4** rail |
-| Missile | B |
+| Fire primary | Space (hangar gun) |
+| Switch hangar gun | **Q** · **1–4** (owned guns; free Pulse Laser only at start) |
+| B-mode fire | **B** (classic missiles or hangar secondary) |
+| Toggle B-mode | **5** |
 | Mine / chaff | J / K |
 | Target | T / Tab |
 | Scan | Hold I |

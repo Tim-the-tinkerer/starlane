@@ -1,6 +1,6 @@
 # Voidreach — Outer Sector Guide
 
-**Starlane 1.0.29** — Hidden outer sector reachable only via a wormhole in Nyx. Home of the Vael aliens, alien bases, purchasable alien tech, and hard space weather (radiation, ion storms, EM blackout).
+**Starlane 1.0.31** — Hidden outer sector reachable only via a wormhole in Nyx. Home of the Vael aliens, alien bases, purchasable alien tech, and hard space weather (radiation, ion storms, EM blackout).
 
 ---
 
@@ -48,7 +48,8 @@ Open the **Outfit** tab at Spire of Vael or Resonance Anchorage — alien tech a
 
 - Vael fire **plasma** and **pulse** patterns (teal bolts) plus occasional missiles
 - Wardens are tanky multi-shot; Stalkers are mid-weight hunters; Skimmers are fast
-- Your **Rail Lance** (**4**) and **Pulse Array** (**3**) are strong options if energy plant is upgraded
+- Fit a hangar **Rail Lance** or **Plasma Repeater** (Ship Hangar), scale with **Gun Amplifiers Mk** and **Power Amplifiers Mk**
+- Weather here often applies a light screen grade (visual); damage rates still show on the HUD strip
 
 ---
 
@@ -72,7 +73,7 @@ Open the **Outfit** tab at Spire of Vael or Resonance Anchorage — alien tech a
 
 ## Space weather
 
-Voidreach often has harsh zones (radiation, ion, EM). Watch the top-center weather strip for live rates. Freelane corridors help cross the system safely.
+Voidreach often has harsh zones (radiation, ion, EM). Watch the top-center weather strip for live rates; a soft full-screen tint appears in hazards without hiding ships. Freelane corridors help cross the system safely.
 
 ---
 
@@ -88,4 +89,4 @@ Voidreach often has harsh zones (radiation, ion, EM). Watch the top-center weath
 ## Related
 
 - [docs/HELP.md](HELP.md) — full controls and systems
-- [CHANGELOG.md](../CHANGELOG.md) — release history (Voidreach since 1.0.11; weather 1.0.24+)
+- [CHANGELOG.md](../CHANGELOG.md) — release history (Voidreach since 1.0.11; weather 1.0.24+; graphics grade 1.0.31)

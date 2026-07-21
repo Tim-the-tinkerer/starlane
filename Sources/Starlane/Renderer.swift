@@ -55,6 +55,9 @@ enum Renderer {
         case .logbook:
             drawStars(ctx: ctx, bounds: bounds, camera: .zero, time: engine.time, parallax: 1)
             drawLogbook(ctx: ctx, bounds: bounds, engine: engine)
+        case .hangar:
+            drawStars(ctx: ctx, bounds: bounds, camera: .zero, time: engine.time, parallax: 1)
+            drawHangar(ctx: ctx, bounds: bounds, engine: engine)
         }
 
         if !engine.message.isEmpty,
@@ -237,6 +240,7 @@ enum Renderer {
             if ship.isCapital { label = "⚠ \(ship.name)" }
             if ship.onTradeLane, ship.isCargo { label = "\(ship.name) · LANE" }
             let wingPaint = ship.isWingman ? (ship.wingmanPaint ?? .militiaOlive) : nil
+            let npcThrust = !ship.enginesDisabled && simd_length(ship.velocity) > 40
             drawShip(
                 ctx: ctx, at: p, angle: ship.angle,
                 style: .from(hullType: ship.hullType),
@@ -247,7 +251,8 @@ enum Renderer {
                 targeted: targeted || ship.isCapital,
                 name: label,
                 time: engine.time,
-                paint: wingPaint ?? .arctic
+                paint: wingPaint ?? .arctic,
+                thrustActive: npcThrust
             )
             if ship.enginesDisabled {
                 ctx.setStrokeColor(Theme.warning.cgColor)
@@ -275,7 +280,9 @@ enum Renderer {
                 targeted: false,
                 name: "GHOST",
                 time: engine.time,
-                paint: .solarGold
+                paint: .solarGold,
+                modularDesign: engine.player.shipDesign,
+                isPlayer: true
             )
             ctx.restoreGState()
             // Ghost trail ring
@@ -303,7 +310,10 @@ enum Renderer {
                 targeted: false,
                 name: nil,
                 time: engine.time,
-                paint: engine.player.paintJob
+                paint: engine.player.paintJob,
+                modularDesign: engine.player.shipDesign,
+                isPlayer: true,
+                thrustActive: engine.isPlayerThrusting
             )
         }
 
@@ -325,77 +335,25 @@ enum Renderer {
             }
         }
 
-        // Projectiles
+        // Projectiles (glow + kind-specific cores)
         for proj in engine.projectiles {
             let p = worldToScreen(proj.position, camera: cam, bounds: bounds)
-            let col: NSColor
-            if proj.source == .station {
-                col = Theme.gold
-            } else if proj.source == .enemy {
-                // Faction-tinted enemy bolts
-                if let owner = engine.npcs.first(where: { $0.id == proj.ownerID }) {
-                    switch owner.faction {
-                    case .pirate: col = Theme.enemyLaser
-                    case .police: col = Theme.police
-                    case .militia: col = Theme.militia
-                    case .alien: col = Theme.alien
-                    case .trader: col = Theme.trader
-                    }
-                } else {
-                    switch proj.kind {
-                    case .plasma: col = Theme.plasma
-                    case .pulse: col = Theme.pulse
-                    case .rail: col = Theme.rail
-                    default: col = Theme.enemyLaser
-                    }
-                }
-            } else {
-                switch proj.kind {
-                case .laser: col = Theme.laser
-                case .plasma: col = Theme.plasma
-                case .pulse: col = Theme.pulse
-                case .rail: col = Theme.rail
-                case .missile: col = Theme.missile
-                case .mine: col = Theme.danger
-                }
-            }
-            let width: CGFloat
-            let len: Float
-            switch proj.kind {
-            case .missile: width = 3.5; len = 10
-            case .plasma: width = 4.0; len = 9
-            case .rail: width = 3.0; len = 14
-            case .pulse: width = 1.8; len = 5
-            case .mine: width = 2.0; len = 4
-            case .laser: width = proj.source == .station ? 3.2 : 2.5; len = proj.source == .station ? 9 : 6
-            }
-            ctx.setStrokeColor(col.cgColor)
-            ctx.setLineWidth(width)
-            let dir = normalizeSafe(proj.velocity)
-            let dx = CGFloat(dir.x * len)
-            let dy = CGFloat(dir.y * len)
-            ctx.move(to: CGPoint(x: p.x - dx, y: p.y - dy))
-            ctx.addLine(to: CGPoint(x: p.x + dx, y: p.y + dy))
-            ctx.strokePath()
-            ctx.setFillColor(col.withAlphaComponent(0.85).cgColor)
-            let s: CGFloat
-            switch proj.kind {
-            case .missile: s = 5
-            case .plasma: s = 4
-            case .rail: s = 3.5
-            default: s = proj.source == .station ? 3.5 : 2
-            }
-            ctx.fillEllipse(in: CGRect(x: p.x - s / 2, y: p.y - s / 2, width: s, height: s))
+            let col = projectileColor(proj, engine: engine)
+            drawProjectile(ctx: ctx, at: p, proj: proj, color: col)
         }
 
-        // Particles
+        // Particles (additive soft cores)
+        ctx.saveGState()
+        ctx.setBlendMode(.plusLighter)
         for part in engine.particles {
             let p = worldToScreen(part.position, camera: cam, bounds: bounds)
-            let a = max(0, part.life / part.maxLife)
-            ctx.setFillColor(CGColor(red: CGFloat(part.color.0), green: CGFloat(part.color.1),
-                                     blue: CGFloat(part.color.2), alpha: CGFloat(a)))
-            let s = CGFloat(part.size) * CGFloat(a)
-            ctx.fillEllipse(in: CGRect(x: p.x - s / 2, y: p.y - s / 2, width: s, height: s))
+            drawParticle(ctx: ctx, at: p, part: part)
+        }
+        ctx.restoreGState()
+
+        // Soft weather grade (playing only — under HUD)
+        if engine.phase == .playing || engine.phase == .photo {
+            drawWeatherGrade(ctx: ctx, bounds: bounds, engine: engine)
         }
 
         // Range prompts
@@ -404,13 +362,205 @@ enum Renderer {
         }
     }
 
+    private static func projectileColor(_ proj: Projectile, engine: GameEngine) -> NSColor {
+        if proj.source == .station { return Theme.gold }
+        if proj.source == .enemy {
+            if let owner = engine.npcs.first(where: { $0.id == proj.ownerID }) {
+                switch owner.faction {
+                case .pirate: return Theme.enemyLaser
+                case .police: return Theme.police
+                case .militia: return Theme.militia
+                case .alien: return Theme.alien
+                case .trader: return Theme.trader
+                }
+            }
+            switch proj.kind {
+            case .plasma: return Theme.plasma
+            case .pulse: return Theme.pulse
+            case .rail: return Theme.rail
+            default: return Theme.enemyLaser
+            }
+        }
+        switch proj.kind {
+        case .laser: return Theme.laser
+        case .plasma: return Theme.plasma
+        case .pulse: return Theme.pulse
+        case .rail: return Theme.rail
+        case .missile: return Theme.missile
+        case .mine: return Theme.danger
+        }
+    }
+
+    private static func drawProjectile(ctx: CGContext, at p: CGPoint, proj: Projectile, color: NSColor) {
+        let dir = normalizeSafe(proj.velocity)
+        let width: CGFloat
+        let len: Float
+        let glowR: CGFloat
+        switch proj.kind {
+        case .missile: width = 3.2; len = 11; glowR = 10
+        case .plasma: width = 4.2; len = 10; glowR = 12
+        case .rail: width = 2.4; len = 18; glowR = 9
+        case .pulse: width = 2.0; len = 5; glowR = 7
+        case .mine: width = 2.0; len = 4; glowR = 6
+        case .laser: width = proj.source == .station ? 3.0 : 2.4; len = proj.source == .station ? 10 : 7; glowR = 8
+        }
+        let dx = CGFloat(dir.x * len)
+        let dy = CGFloat(dir.y * len)
+
+        // Soft additive glow
+        ctx.saveGState()
+        ctx.setBlendMode(.plusLighter)
+        ctx.setFillColor(color.withAlphaComponent(0.22).cgColor)
+        ctx.fillEllipse(in: CGRect(x: p.x - glowR, y: p.y - glowR, width: glowR * 2, height: glowR * 2))
+        ctx.setFillColor(color.withAlphaComponent(0.12).cgColor)
+        let outer = glowR * 1.55
+        ctx.fillEllipse(in: CGRect(x: p.x - outer, y: p.y - outer, width: outer * 2, height: outer * 2))
+
+        switch proj.kind {
+        case .missile:
+            // Exhaust streak
+            let ex = CGFloat(dir.x * 14)
+            let ey = CGFloat(dir.y * 14)
+            ctx.setStrokeColor(color.withAlphaComponent(0.45).cgColor)
+            ctx.setLineWidth(2.5)
+            ctx.move(to: CGPoint(x: p.x - ex, y: p.y - ey))
+            ctx.addLine(to: CGPoint(x: p.x - dx * 0.2, y: p.y - dy * 0.2))
+            ctx.strokePath()
+        case .plasma:
+            ctx.setFillColor(color.withAlphaComponent(0.35).cgColor)
+            ctx.fillEllipse(in: CGRect(x: p.x - 7, y: p.y - 7, width: 14, height: 14))
+        case .rail:
+            ctx.setStrokeColor(color.withAlphaComponent(0.35).cgColor)
+            ctx.setLineWidth(5)
+            ctx.move(to: CGPoint(x: p.x - dx * 1.1, y: p.y - dy * 1.1))
+            ctx.addLine(to: CGPoint(x: p.x + dx * 1.1, y: p.y + dy * 1.1))
+            ctx.strokePath()
+        default:
+            break
+        }
+        ctx.restoreGState()
+
+        // Core bolt
+        ctx.setStrokeColor(color.cgColor)
+        ctx.setLineWidth(width)
+        ctx.setLineCap(.round)
+        ctx.move(to: CGPoint(x: p.x - dx, y: p.y - dy))
+        ctx.addLine(to: CGPoint(x: p.x + dx, y: p.y + dy))
+        ctx.strokePath()
+
+        // Bright tip / body
+        switch proj.kind {
+        case .missile:
+            // Diamond body
+            let px = CGFloat(dir.x), py = CGFloat(dir.y)
+            let ox = -py * 3.5, oy = px * 3.5
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: p.x + dx * 0.9, y: p.y + dy * 0.9))
+            path.addLine(to: CGPoint(x: p.x + ox, y: p.y + oy))
+            path.addLine(to: CGPoint(x: p.x - dx * 0.6, y: p.y - dy * 0.6))
+            path.addLine(to: CGPoint(x: p.x - ox, y: p.y - oy))
+            path.closeSubpath()
+            ctx.setFillColor(color.cgColor)
+            ctx.addPath(path)
+            ctx.fillPath()
+            ctx.setFillColor(NSColor.white.withAlphaComponent(0.55).cgColor)
+            ctx.fillEllipse(in: CGRect(x: p.x - 1.5, y: p.y - 1.5, width: 3, height: 3))
+        case .plasma:
+            ctx.setFillColor(color.withAlphaComponent(0.95).cgColor)
+            ctx.fillEllipse(in: CGRect(x: p.x - 4, y: p.y - 4, width: 8, height: 8))
+            ctx.setFillColor(NSColor.white.withAlphaComponent(0.5).cgColor)
+            ctx.fillEllipse(in: CGRect(x: p.x - 1.8, y: p.y - 1.8, width: 3.6, height: 3.6))
+        case .pulse:
+            for i in 0..<3 {
+                let t = CGFloat(i - 1) * 2.2
+                ctx.setFillColor(color.withAlphaComponent(0.7 - CGFloat(i) * 0.15).cgColor)
+                ctx.fillEllipse(in: CGRect(x: p.x + CGFloat(dir.x) * t - 1.6,
+                                           y: p.y + CGFloat(dir.y) * t - 1.6, width: 3.2, height: 3.2))
+            }
+        case .rail:
+            ctx.setFillColor(NSColor.white.withAlphaComponent(0.9).cgColor)
+            ctx.fillEllipse(in: CGRect(x: p.x + dx * 0.85 - 2, y: p.y + dy * 0.85 - 2, width: 4, height: 4))
+            ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.55).cgColor)
+            ctx.setLineWidth(1.2)
+            ctx.move(to: CGPoint(x: p.x - dx, y: p.y - dy))
+            ctx.addLine(to: CGPoint(x: p.x + dx, y: p.y + dy))
+            ctx.strokePath()
+        default:
+            let s: CGFloat = proj.source == .station ? 3.5 : 2.4
+            ctx.setFillColor(color.withAlphaComponent(0.95).cgColor)
+            ctx.fillEllipse(in: CGRect(x: p.x - s / 2, y: p.y - s / 2, width: s, height: s))
+            ctx.setFillColor(NSColor.white.withAlphaComponent(0.45).cgColor)
+            ctx.fillEllipse(in: CGRect(x: p.x - 1, y: p.y - 1, width: 2, height: 2))
+        }
+    }
+
+    private static func drawParticle(ctx: CGContext, at p: CGPoint, part: Particle) {
+        let life = max(0, part.life / max(0.001, part.maxLife))
+        // Slight inflate as particle dies for explosion “pop”
+        let inflate = 1.0 + (1.0 - life) * 0.35
+        let s = CGFloat(part.size) * CGFloat(life) * CGFloat(inflate)
+        guard s > 0.3 else { return }
+        let r = CGFloat(part.color.0), g = CGFloat(part.color.1), b = CGFloat(part.color.2)
+        // Outer soft
+        ctx.setFillColor(CGColor(red: r, green: g, blue: b, alpha: 0.22 * CGFloat(life)))
+        let outer = s * 1.8
+        ctx.fillEllipse(in: CGRect(x: p.x - outer / 2, y: p.y - outer / 2, width: outer, height: outer))
+        // Core
+        ctx.setFillColor(CGColor(red: min(1, r + 0.15), green: min(1, g + 0.1), blue: min(1, b + 0.05),
+                                 alpha: 0.85 * CGFloat(life)))
+        ctx.fillEllipse(in: CGRect(x: p.x - s / 2, y: p.y - s / 2, width: s, height: s))
+    }
+
+    private static func drawWeatherGrade(ctx: CGContext, bounds: CGRect, engine: GameEngine) {
+        let env = engine.environmentEffects
+        guard env.isHazardous || !env.labels.isEmpty else { return }
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        if env.damagePerSec > 0.5 {
+            r += 0.9; g += 0.15; b += 0.08; a += 0.07
+        }
+        if env.energyDrainPerSec > 3 {
+            r += 0.15; g += 0.55; b += 0.9; a += 0.06
+        }
+        if env.sensorsBlind {
+            r += 0.08; g += 0.06; b += 0.12; a += 0.09
+        }
+        if env.thrustMult < 0.92 {
+            r += 0.75; g += 0.55; b += 0.25; a += 0.05
+        }
+        if env.turnMult < 0.92 {
+            r += 0.35; g += 0.75; b += 0.95; a += 0.04
+        }
+        if simd_length_squared(env.gravPull) > 1 {
+            r += 0.7; g += 0.25; b += 0.9; a += 0.05
+        }
+        guard a > 0.01 else { return }
+        a = min(0.10, a)
+        ctx.setFillColor(NSColor(calibratedRed: min(1, r), green: min(1, g), blue: min(1, b), alpha: a).cgColor)
+        ctx.fill(bounds)
+        // Soft edge vignette for hazards
+        if env.isHazardous {
+            let colors = [
+                CGColor(red: min(1, r), green: min(1, g), blue: min(1, b), alpha: 0),
+                CGColor(red: min(1, r), green: min(1, g), blue: min(1, b), alpha: a * 0.9),
+            ] as CFArray
+            if let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0.55, 1]) {
+                let c = CGPoint(x: bounds.midX, y: bounds.midY)
+                let maxR = hypot(bounds.width, bounds.height) * 0.55
+                ctx.drawRadialGradient(grad, startCenter: c, startRadius: 0,
+                                       endCenter: c, endRadius: maxR, options: [])
+            }
+        }
+    }
+
     private static func drawStars(ctx: CGContext, bounds: CGRect, camera: SIMD2<Float>, time: Float, parallax: Float) {
         var rng = SeededRNG(seed: 42)
         for layer in 0..<3 {
             let depth = Float(layer + 1) * 0.15 * parallax
-            let count = 80 + layer * 40
-            let size: CGFloat = layer == 0 ? 1.2 : (layer == 1 ? 1.6 : 2.2)
-            let alpha: CGFloat = layer == 0 ? 0.35 : (layer == 1 ? 0.55 : 0.8)
+            let count = 90 + layer * 45
+            let baseSize: CGFloat = layer == 0 ? 1.1 : (layer == 1 ? 1.55 : 2.15)
+            let baseAlpha: CGFloat = layer == 0 ? 0.32 : (layer == 1 ? 0.52 : 0.78)
+            // Far layers cooler, near warmer
+            let coolBias = CGFloat(2 - layer) * 0.08
             for _ in 0..<count {
                 let wx = rng.nextFloat(-3000...3000)
                 let wy = rng.nextFloat(-3000...3000)
@@ -418,9 +568,27 @@ enum Renderer {
                 let sy = CGFloat(wy - camera.y * depth).truncatingRemainder(dividingBy: bounds.height)
                 let x = sx < 0 ? sx + bounds.width : sx
                 let y = sy < 0 ? sy + bounds.height : sy
-                let twinkle = 0.7 + 0.3 * sin(Double(time * 2 + wx * 0.01))
-                ctx.setFillColor(NSColor.white.withAlphaComponent(alpha * CGFloat(twinkle)).cgColor)
+                let twinkle = 0.72 + 0.28 * sin(Double(time * 2 + wx * 0.01))
+                // Color temperature 0…1 → cool blue / white / warm amber
+                let temp = rng.nextFloat(0...1)
+                let cr: CGFloat, cg: CGFloat, cb: CGFloat
+                if temp < 0.35 {
+                    cr = 0.65 + coolBias; cg = 0.78; cb = 1.0
+                } else if temp < 0.75 {
+                    cr = 0.92; cg = 0.94; cb = 1.0
+                } else {
+                    cr = 1.0; cg = 0.82 - coolBias * 0.3; cb = 0.55
+                }
+                let giant = layer == 2 && temp > 0.92
+                let size = giant ? baseSize * 1.9 : baseSize
+                let alpha = baseAlpha * CGFloat(twinkle) * (giant ? 1.15 : 1.0)
+                ctx.setFillColor(NSColor(calibratedRed: min(1, cr), green: min(1, cg), blue: min(1, cb),
+                                         alpha: alpha).cgColor)
                 ctx.fillEllipse(in: CGRect(x: x, y: y, width: size, height: size))
+                if giant {
+                    ctx.setFillColor(NSColor(calibratedRed: cr, green: cg, blue: cb, alpha: alpha * 0.25).cgColor)
+                    ctx.fillEllipse(in: CGRect(x: x - size, y: y - size, width: size * 3, height: size * 3))
+                }
             }
         }
     }
@@ -950,37 +1118,74 @@ enum Renderer {
         style: ShipArt.Style, accent: NSColor,
         radius: Float, shieldFrac: Float, hullFrac: Float,
         targeted: Bool, name: String?, time: Float,
-        paint: ShipPaint = .arctic
+        paint: ShipPaint = .arctic,
+        modularDesign: ShipDesign? = nil,
+        isPlayer: Bool = false,
+        thrustActive: Bool = false
     ) {
         let r = CGFloat(radius)
         ctx.saveGState()
         ctx.translateBy(x: p.x, y: p.y)
         ctx.rotate(by: CGFloat(angle))
 
-        // Shield bubble
+        // Shield bubble — soft fill + stroke
         if shieldFrac > 0.05 {
-            ctx.setStrokeColor(Theme.shield.withAlphaComponent(0.2 + 0.35 * CGFloat(shieldFrac)).cgColor)
-            ctx.setLineWidth(1.5)
             let sr = r + 8
+            let pulse = 0.85 + 0.15 * sin(Double(time * 3))
+            let colors = [
+                Theme.shield.withAlphaComponent(0.04 * CGFloat(shieldFrac)).cgColor,
+                Theme.shield.withAlphaComponent(0.14 * CGFloat(shieldFrac) * CGFloat(pulse)).cgColor,
+                Theme.shield.withAlphaComponent(0).cgColor,
+            ] as CFArray
+            if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0.3, 0.75, 1]) {
+                ctx.drawRadialGradient(g, startCenter: .zero, startRadius: r * 0.4,
+                                       endCenter: .zero, endRadius: sr + 4, options: [])
+            }
+            ctx.setStrokeColor(Theme.shield.withAlphaComponent(0.25 + 0.4 * CGFloat(shieldFrac)).cgColor)
+            ctx.setLineWidth(1.6)
             ctx.strokeEllipse(in: CGRect(x: -sr, y: -sr, width: sr * 2, height: sr * 2))
         }
 
-        ShipArt.draw(ctx: ctx, style: style, scale: r, accent: accent, time: time, paint: paint)
+        let thrust: CGFloat
+        if isPlayer {
+            thrust = thrustActive ? 0.88 : 0.16
+        } else {
+            thrust = thrustActive ? 0.55 : 0.22
+        }
+        let dmg: CGFloat = hullFrac < 0.35 ? CGFloat(1 - hullFrac) : 0
+        ShipArt.draw(
+            ctx: ctx, style: style, scale: r, accent: accent, time: time, paint: paint,
+            modularDesign: modularDesign,
+            thrustGlow: thrust,
+            shieldPulse: CGFloat(shieldFrac),
+            damaged: dmg
+        )
         ctx.restoreGState()
 
         if targeted {
-            ctx.setStrokeColor(Theme.danger.cgColor)
-            ctx.setLineWidth(1.5)
             let tr = r + 14
-            ctx.strokeEllipse(in: CGRect(x: p.x - tr, y: p.y - tr, width: tr * 2, height: tr * 2))
-            ctx.move(to: CGPoint(x: p.x - tr - 5, y: p.y))
-            ctx.addLine(to: CGPoint(x: p.x - tr + 5, y: p.y))
-            ctx.move(to: CGPoint(x: p.x + tr - 5, y: p.y))
-            ctx.addLine(to: CGPoint(x: p.x + tr + 5, y: p.y))
-            ctx.move(to: CGPoint(x: p.x, y: p.y - tr - 5))
-            ctx.addLine(to: CGPoint(x: p.x, y: p.y - tr + 5))
-            ctx.move(to: CGPoint(x: p.x, y: p.y + tr - 5))
-            ctx.addLine(to: CGPoint(x: p.x, y: p.y + tr + 5))
+            let arm: CGFloat = 7
+            ctx.setStrokeColor(Theme.danger.withAlphaComponent(0.95).cgColor)
+            ctx.setLineWidth(1.6)
+            // Four L-brackets at corners of the target box
+            let offs: [(CGFloat, CGFloat)] = [(-tr, -tr), (tr, -tr), (-tr, tr), (tr, tr)]
+            for (i, o) in offs.enumerated() {
+                let sx: CGFloat = i % 2 == 0 ? 1 : -1
+                let sy: CGFloat = i < 2 ? 1 : -1
+                let cx = p.x + o.0
+                let cy = p.y + o.1
+                ctx.move(to: CGPoint(x: cx, y: cy + sy * arm))
+                ctx.addLine(to: CGPoint(x: cx, y: cy))
+                ctx.addLine(to: CGPoint(x: cx + sx * arm, y: cy))
+                ctx.strokePath()
+            }
+            // Subtle cross ticks
+            ctx.setStrokeColor(Theme.danger.withAlphaComponent(0.45).cgColor)
+            ctx.setLineWidth(1)
+            ctx.move(to: CGPoint(x: p.x - tr - 4, y: p.y))
+            ctx.addLine(to: CGPoint(x: p.x - tr + 3, y: p.y))
+            ctx.move(to: CGPoint(x: p.x + tr - 3, y: p.y))
+            ctx.addLine(to: CGPoint(x: p.x + tr + 4, y: p.y))
             ctx.strokePath()
         }
 
@@ -1135,12 +1340,14 @@ enum Renderer {
                        frac: CGFloat(p.cargoUsed / max(1, p.stats.cargoCapacity)), color: Theme.accent,
                        text: String(format: "%.0f/%.0f", p.cargoUsed, p.stats.cargoCapacity))
         y -= 14
+        let hangarGun = p.hangarPrimaryWeapon
         let wCol: NSColor = {
-            switch p.weaponMode {
-            case .laser: return Theme.laser
+            if let hex = hangarGun?.colorHex, let c = NSColor(hex: hex) { return c }
+            switch hangarGun?.weaponType {
             case .plasma: return Theme.plasma
-            case .pulse: return Theme.pulse
-            case .rail: return Theme.rail
+            case .rail, .cannon: return Theme.rail
+            case .beam: return Theme.danger
+            default: return Theme.laser
             }
         }()
         let lockHint: String = {
@@ -1150,7 +1357,19 @@ enum Renderer {
             }
             return "—"
         }()
-        var ordnance = "\(p.weaponMode.shortName)  ·  MSL \(p.missiles)  MN \(p.mineStock)  CM \(p.cmStock) \(lockHint)"
+        let gunLabel = hangarGun?.name ?? "Unarmed"
+        let secLabel: String = {
+            switch p.bKeyMode {
+            case .classicMissiles:
+                return "B:MSL \(p.missiles)/\(Player.maxMissiles)"
+            case .hangarSecondary:
+                if let sec = p.hangarSecondaryWeapon {
+                    return "B:\(sec.name)"
+                }
+                return "B:HANGAR?"
+            }
+        }()
+        var ordnance = "\(gunLabel)  ·  \(secLabel)  ·  MN \(p.mineStock)  CM \(p.cmStock) \(lockHint)"
         if p.freelaneBoostActive {
             ordnance += "  ·  LANE BOOST \(Int(p.freelaneBoostSeconds ?? 0))s"
         } else if p.hasAncientLaneCore {
@@ -2086,24 +2305,64 @@ enum Renderer {
     // MARK: - Station UI
 
     private static func drawStationUI(ctx: CGContext, bounds: CGRect, engine: GameEngine, dimmed: Bool) {
+        // Deeper vignette so dock panel reads as a station bay
         if dimmed {
-            ctx.setFillColor(NSColor.black.withAlphaComponent(0.35).cgColor)
+            ctx.setFillColor(NSColor.black.withAlphaComponent(0.42).cgColor)
             ctx.fill(bounds)
         } else {
-            ctx.setFillColor(NSColor.black.withAlphaComponent(0.45).cgColor)
+            ctx.setFillColor(NSColor.black.withAlphaComponent(0.52).cgColor)
             ctx.fill(bounds)
         }
 
         guard let st = engine.dockedStation else { return }
-        // Tall panel so Outfit (and other long tabs) have room; still leaves margin on short displays
         let panelW = min(760, bounds.width - 60)
         let panelH = min(640, bounds.height - 48)
         let panel = CGRect(x: (bounds.width - panelW) / 2, y: (bounds.height - panelH) / 2,
                            width: panelW, height: panelH)
-        drawPanel(ctx: ctx, rect: panel, radius: 12)
 
-        // Header
         let headerCol = st.isEnemyBase ? Theme.pirate : Theme.station
+        let railCol = st.isEnemyBase ? Theme.pirate : Theme.systemTint(engine.currentSystemName)
+
+        // Soft outer glow behind panel
+        ctx.setFillColor(railCol.withAlphaComponent(0.08).cgColor)
+        ctx.fill(panel.insetBy(dx: -6, dy: -6))
+
+        drawPanel(ctx: ctx, rect: panel, radius: 12, accent: railCol)
+
+        // Faction-tinted header bar
+        let headerH: CGFloat = 64
+        let headerRect = CGRect(x: panel.minX, y: panel.maxY - headerH, width: panel.width, height: headerH)
+        ctx.saveGState()
+        let clip = NSBezierPath(roundedRect: panel, xRadius: 12, yRadius: 12)
+        clip.addClip()
+        let headerColors = [
+            headerCol.withAlphaComponent(0.28).cgColor,
+            headerCol.withAlphaComponent(0.06).cgColor,
+            Theme.panelBg.cgColor,
+        ] as CFArray
+        if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: headerColors, locations: [0, 0.55, 1]) {
+            ctx.drawLinearGradient(g,
+                                   start: CGPoint(x: headerRect.midX, y: headerRect.maxY),
+                                   end: CGPoint(x: headerRect.midX, y: headerRect.minY - 8),
+                                   options: [])
+        }
+        // Top accent line
+        ctx.setStrokeColor(headerCol.withAlphaComponent(0.75).cgColor)
+        ctx.setLineWidth(2)
+        ctx.move(to: CGPoint(x: panel.minX + 12, y: panel.maxY - 2))
+        ctx.addLine(to: CGPoint(x: panel.maxX - 12, y: panel.maxY - 2))
+        ctx.strokePath()
+        ctx.restoreGState()
+
+        // Side rails
+        ctx.setStrokeColor(railCol.withAlphaComponent(0.45).cgColor)
+        ctx.setLineWidth(2)
+        ctx.move(to: CGPoint(x: panel.minX + 3, y: panel.minY + 18))
+        ctx.addLine(to: CGPoint(x: panel.minX + 3, y: panel.maxY - 18))
+        ctx.move(to: CGPoint(x: panel.maxX - 3, y: panel.minY + 18))
+        ctx.addLine(to: CGPoint(x: panel.maxX - 3, y: panel.maxY - 18))
+        ctx.strokePath()
+
         let headerName = st.isEnemyBase ? "☠ \(st.name)" : st.name
         drawText(headerName, at: CGPoint(x: panel.minX + 24, y: panel.maxY - 32),
                  font: .systemFont(ofSize: 20, weight: .bold), color: headerCol)
@@ -2118,18 +2377,18 @@ enum Renderer {
 
         // Tabs (Warehouse only at Freeport 7)
         let tabs = engine.availableStationTabs
-        let tabY = panel.maxY - 88
+        let tabY = panel.maxY - 96
         let tabW = (panelW - 48) / CGFloat(max(1, tabs.count))
         for (i, tab) in tabs.enumerated() {
             let selected = tab == engine.stationTab
             let tx = panel.minX + 24 + CGFloat(i) * tabW
             let tr = CGRect(x: tx, y: tabY, width: tabW - 6, height: 28)
             if selected {
-                Theme.accent.withAlphaComponent(0.2).setFill()
+                railCol.withAlphaComponent(0.22).setFill()
                 NSBezierPath(roundedRect: tr, xRadius: 6, yRadius: 6).fill()
-                Theme.accent.setStroke()
+                railCol.setStroke()
                 let bp = NSBezierPath(roundedRect: tr, xRadius: 6, yRadius: 6)
-                bp.lineWidth = 1
+                bp.lineWidth = 1.2
                 bp.stroke()
             }
             let label = "\(i + 1) \(tab.title)"
@@ -2278,8 +2537,9 @@ enum Renderer {
             }
             return "Protection: none (Umbra / dens / black markets)"
         }()
+        let gunName = p.hangarPrimaryWeapon?.name ?? "Unarmed"
         let lines = [
-            "Hull class: \(p.shipClass.displayName)",
+            "Hull role / career: \(p.shipClass.displayName)",
             "Hull: \(Int(p.hull))/\(Int(p.stats.maxHull))   Shields: \(Int(p.shield))/\(Int(p.stats.maxShield))",
             "Cargo: \(String(format: "%.0f", p.cargoUsed))/\(String(format: "%.0f", p.stats.cargoCapacity))  ·  Hidden: \(String(format: "%.0f", hidden))/\(String(format: "%.0f", Player.hiddenCargoCapacity))",
             "Wanted: \(rep.wantedLabel) (\(rep.wantedLevel)/5)   Dirty: \(p.isDirty ? "yes" : "no")",
@@ -2290,8 +2550,8 @@ enum Renderer {
             loanLine,
             protLine,
             "Kills: \(p.kills)   Missions: \(p.missionsCompleted)   Discoveries: +\(p.discoveryCreditsEarned) cr",
-            "Loadout: Wpn Mk\(p.weaponLevel)  Eng Mk\(p.engineLevel)  Shd Mk\(p.shieldLevel)  Enr Mk\(p.energyLevel)  Hold Mk\(p.cargoLevel)",
-            "Energy: \(Int(p.energy))/\(Int(p.stats.maxEnergy))  ·  \(p.weaponMode.displayName)  ·  Missiles \(p.missiles)/\(Player.maxMissiles)",
+            "Mk amps: Gun \(p.weaponLevel)  Drive \(p.engineLevel)  Shd \(p.shieldLevel)  Pwr \(p.energyLevel)  Hold \(p.cargoLevel)",
+            "Primary: \(gunName)  ·  Energy \(Int(p.energy))/\(Int(p.stats.maxEnergy))  ·  MSL \(p.missiles)/\(Player.maxMissiles)",
             "Blueprints: \(mods)",
         ]
         for line in lines {
@@ -2490,30 +2750,23 @@ enum Renderer {
     private static func drawOutfitTab(content: CGRect, engine: GameEngine, station: Station) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         let p = engine.player
-        let paint = p.paintJob
-        let owned = p.ownedPaints.contains(paint)
-        let paintSub: String
-        if owned {
-            paintSub = "Equipped · − / + cycle paints · Enter equip"
-        } else {
-            paintSub = "Preview · unlock \(paint.unlockCost) cr · − / + cycle · Enter buy"
-        }
-        let previewHull = engine.outfitSelectIndex == 8 ? engine.shipClassPreview : p.shipClass
+        // Career / hull role browse is outfit index 7 (modular hangar Hull is separate)
+        let previewHull = engine.outfitSelectIndex == 7 ? engine.shipClassPreview : p.shipClass
         let hullOwned = p.rep.ownedShips.contains(previewHull) || previewHull == .hybrid
-        let hullTitle = engine.outfitSelectIndex == 8
-            ? "Ship: \(previewHull.displayName)"
-            : "Ship: \(p.shipClass.displayName)"
+        let hullTitle = engine.outfitSelectIndex == 7
+            ? "Hull Role / Career: \(previewHull.displayName)"
+            : "Hull Role / Career: \(p.shipClass.displayName)"
         let hullSub: String
-        if engine.outfitSelectIndex == 8 {
+        if engine.outfitSelectIndex == 7 {
             if hullOwned {
                 hullSub = previewHull == p.shipClass
-                    ? "\(previewHull.blurb) · equipped"
-                    : "Owned · Enter to swap (Mk upgrades keep)"
+                    ? "\(previewHull.blurb) · active role · hangar parts re-fit after swap"
+                    : "Owned · Enter swap · Mk kept · re-fit hangar parts after swap"
             } else {
-                hullSub = "\(previewHull.blurb) · \(previewHull.purchaseCost) cr · Enter buy"
+                hullSub = "\(previewHull.blurb) · \(previewHull.purchaseCost) cr · Enter buy · Mk kept · re-fit hangar after"
             }
         } else {
-            hullSub = "\(p.shipClass.blurb) · −/+ on row to browse hulls"
+            hullSub = "\(p.shipClass.blurb) · −/+ Hybrid · Freighter · Interceptor (not hangar Hull)"
         }
         let fine = p.rep.fineCost()
         let fineSub: String
@@ -2524,47 +2777,57 @@ enum Renderer {
         } else {
             fineSub = "Dock at a Militia station (e.g. Fort Kestrel, Border Watch)"
         }
-        let mslSub: String
-        if p.missiles >= Player.maxMissiles {
-            mslSub = "Racks full \(p.missiles)/\(Player.maxMissiles)"
-        } else {
-            mslSub = "+\(min(Player.missilePackSize, Player.maxMissiles - p.missiles)) missiles · \(Player.missilePackCost) cr"
-        }
+        // Paint/livery is hangar-only. Outfit = Mk amps, services, ammo; Hangar = modules + guns.
+        let engSub = p.engineLevel >= 5
+            ? "MAX — drive amp stacks on hangar Engines"
+            : "Drive amp (stacks hangar Engines) → Mk\(p.engineLevel + 1)  (\(1000 * p.engineLevel) cr)"
+        let shdSub = p.shieldLevel >= 5
+            ? "MAX — shield amp stacks on hangar Shields"
+            : "Shield amp (stacks hangar Shields) → Mk\(p.shieldLevel + 1)  (\(1100 * p.shieldLevel) cr)"
+        let enrSub = p.energyLevel >= 5
+            ? "MAX — power amp for hangar guns & regen"
+            : "Power amp (stacks hangar reactor/hull)  (\(1150 * p.energyLevel) cr)"
+        let mslFullSub = "Full · B classic missiles (key 5 toggles hangar secondary)"
+        let mslBuySub = "+\(min(Player.missilePackSize, Player.maxMissiles - p.missiles)) · \(Player.missilePackCost) cr · B classic / hangar Seekers"
+        let mineFullSub = "Full · J classic drop · hangar Mines use B-mode secondary"
+        let mineBuySub = "+\(min(Player.minePackSize, p.maxMinesForClass - p.mineStock)) · \(Player.minePackCost) cr · J drop (classic)"
         var items: [(String, String, Int, Bool)] = [
-            ("Weapons Mk\(p.weaponLevel)", p.weaponLevel >= 5 ? "MAX" : "Upgrade → Mk\(p.weaponLevel + 1)  (\(1200 * p.weaponLevel) cr)", 0, false),
-            ("Engines Mk\(p.engineLevel)", p.engineLevel >= 5 ? "MAX" : "Upgrade → Mk\(p.engineLevel + 1)  (\(1000 * p.engineLevel) cr)", 1, false),
-            ("Shields Mk\(p.shieldLevel)", p.shieldLevel >= 5 ? "MAX" : "Upgrade → Mk\(p.shieldLevel + 1)  (\(1100 * p.shieldLevel) cr)", 2, false),
-            ("Energy Plant Mk\(p.energyLevel)", p.energyLevel >= 5 ? "MAX — capacitor & regen"
-                : "More energy for weapons & shields  (\(1150 * p.energyLevel) cr)", 3, false),
-            ("Cargo Hold Mk\(p.cargoLevel)", p.cargoLevel >= 5 ? "MAX" : "Upgrade → Mk\(p.cargoLevel + 1)  (\(900 * p.cargoLevel) cr)", 4, false),
-            ("Full Repair", "Restore hull (\(Int(ceil(p.stats.maxHull - p.hull)) * station.repairCostPerHull) cr)", 5, false),
-            ("Paint: \(paint.displayName)", paintSub, 6, false),
+            ("Gun Amplifiers Mk\(p.weaponLevel)",
+             p.weaponLevel >= 5 ? "MAX — scales hangar primary DPS"
+                : "Scales hangar primary damage → Mk\(p.weaponLevel + 1)  (\(1200 * p.weaponLevel) cr)", 0, false),
+            ("Drive Amplifiers Mk\(p.engineLevel)", engSub, 1, false),
+            ("Shield Amplifiers Mk\(p.shieldLevel)", shdSub, 2, false),
+            ("Power Amplifiers Mk\(p.energyLevel)", enrSub, 3, false),
+            ("Cargo Hold Mk\(p.cargoLevel)", p.cargoLevel >= 5 ? "MAX — no hangar equivalent"
+                : "Hold size only (hangar has no cargo slot) → Mk\(p.cargoLevel + 1)  (\(900 * p.cargoLevel) cr)", 4, false),
+            ("Full Repair", "Service: restore hull (\(Int(ceil(p.stats.maxHull - p.hull)) * station.repairCostPerHull) cr)", 5, false),
             ("Wingman: \(engine.wingmanRolePreview.displayName)", engine.hasWingman
                 ? "\(engine.activeWingmanName()) active · −/+ browse next hire"
-                : "\(engine.wingmanRolePreview.blurb) · \(engine.wingmanHireCostCurrent()) cr · −/+ role", 7, false),
-            (hullTitle, hullSub, 8, false),
-            ("Clear Wanted", fineSub, 9, false),
-            ("Missiles \(p.missiles)/\(Player.maxMissiles)", mslSub, 10, false),
+                : "\(engine.wingmanRolePreview.blurb) · \(engine.wingmanHireCostCurrent()) cr · −/+ role", 6, false),
+            (hullTitle, hullSub, 7, false),
+            ("Clear Wanted", fineSub, 8, false),
+            ("Missiles \(p.missiles)/\(Player.maxMissiles)",
+             p.missiles >= Player.maxMissiles ? mslFullSub : mslBuySub, 9, false),
             ("Hull Insurance", p.ironmanMode
                 ? "Unavailable on Ironman"
-                : (p.insured ? "ACTIVE — respawn at last dock on death" : "\(Player.insurancePremium) cr · respawn last dock (−fee)"), 11, false),
+                : (p.insured ? "ACTIVE — respawn at last dock on death" : "\(Player.insurancePremium) cr · respawn last dock (−fee)"), 10, false),
             ("Freighter Loan", p.loanOutstanding > 0
                 ? "Owed \(p.loanOutstanding) cr · Enter pay · \(Player.loanPaymentPerDock)/dock auto"
                 : (p.rep.ownedShips.contains(.freighter)
                     ? "You already own a freighter"
-                    : "Down \(Player.freighterLoanDownPayment) cr · owe \(Player.freighterLoanAmount)"), 12, false),
+                    : "Down \(Player.freighterLoanDownPayment) cr · owe \(Player.freighterLoanAmount)"), 11, false),
             ("Pirate Protection", {
                 if let s = p.pirateProtectionSeconds, s > 0 {
                     return "Active \(Int(s))s · Enter extend \(Player.pirateProtectionFee) cr"
                 }
                 return "Umbra/dens/black market · \(Player.pirateProtectionFee) cr · pirates stand down"
-            }(), 13, false),
+            }(), 12, false),
             ("Mines \(p.mineStock)/\(p.maxMinesForClass)",
-             p.mineStock >= p.maxMinesForClass ? "Racks full · J drops mine"
-                : "+\(min(Player.minePackSize, p.maxMinesForClass - p.mineStock)) · \(Player.minePackCost) cr · J drop", 14, false),
+             p.mineStock >= p.maxMinesForClass ? mineFullSub : mineBuySub, 13, false),
             ("Chaff \(p.cmStock)/\(p.maxCMForClass)",
              p.cmStock >= p.maxCMForClass ? "Racks full · K breaks missile locks"
-                : "+\(min(Player.cmPackSize, p.maxCMForClass - p.cmStock)) · \(Player.cmPackCost) cr · K deploy", 15, false),
+                : "+\(min(Player.cmPackSize, p.maxCMForClass - p.cmStock)) · \(Player.cmPackCost) cr · K deploy · no hangar slot", 14, false),
+            ("Ship Hangar", "Hull · Wings · Engines · Primary · Secondary · Shields · Utility · Livery · Enter open", 15, false),
         ]
         if engine.isAlienOutfitter {
             for (i, tech) in Blueprint.alienTech.enumerated() {
@@ -2636,16 +2899,6 @@ enum Renderer {
                      color: titleCol)
             drawText(subtitle, at: CGPoint(x: content.minX, y: subY),
                      font: .systemFont(ofSize: 10), color: Theme.textSecondary)
-            if idx == 6 {
-                paint.hull.setFill()
-                NSBezierPath(roundedRect: CGRect(x: content.maxX - 36, y: titleY - 2, width: 28, height: 14),
-                             xRadius: 3, yRadius: 3).fill()
-                paint.accent.setStroke()
-                let sw = NSBezierPath(roundedRect: CGRect(x: content.maxX - 36, y: titleY - 2, width: 28, height: 14),
-                                      xRadius: 3, yRadius: 3)
-                sw.lineWidth = 2
-                sw.stroke()
-            }
         }
         ctx.restoreGState()
 
@@ -2670,6 +2923,163 @@ enum Renderer {
                  font: .systemFont(ofSize: 12), color: Theme.textSecondary, align: .center)
     }
 
+    // MARK: - Ship Hangar (Spacecraft Builder)
+
+    private static func drawHangar(ctx: CGContext, bounds: CGRect, engine: GameEngine) {
+        let panelW = min(920, bounds.width - 48)
+        let panelH = min(620, bounds.height - 40)
+        let panel = CGRect(x: (bounds.width - panelW) / 2, y: (bounds.height - panelH) / 2,
+                           width: panelW, height: panelH)
+        drawPanel(ctx: ctx, rect: panel, radius: 14)
+
+        drawText("SHIP HANGAR", at: CGPoint(x: panel.minX + 28, y: panel.maxY - 36),
+                 font: .systemFont(ofSize: 22, weight: .bold), color: Theme.accent)
+        let stName = engine.dockedStation?.name ?? "Station"
+        drawText("\(stName) · \(engine.hangarDraft.name) · \(engine.player.credits) cr",
+                 at: CGPoint(x: panel.minX + 28, y: panel.maxY - 58),
+                 font: .systemFont(ofSize: 12), color: Theme.gold)
+        drawText("Modules + weapons + livery · Outfit Mk amps / ammo / services stack on top",
+                 at: CGPoint(x: panel.minX + 28, y: panel.maxY - 74),
+                 font: .systemFont(ofSize: 10), color: Theme.textMuted)
+
+        // Slot chips (top strip) — leave room for subtitle under station line
+        let slots = PartSlot.allCases
+        let chipW = (panelW - 56) / CGFloat(slots.count)
+        var chipX = panel.minX + 28
+        let chipY = panel.maxY - 112
+        for slot in slots {
+            let active = slot == engine.hangarSlot
+            let chip = CGRect(x: chipX, y: chipY, width: chipW - 6, height: 28)
+            if active {
+                Theme.accent.withAlphaComponent(0.22).setFill()
+                NSBezierPath(roundedRect: chip, xRadius: 6, yRadius: 6).fill()
+                Theme.accent.setStroke()
+                let bp = NSBezierPath(roundedRect: chip, xRadius: 6, yRadius: 6)
+                bp.lineWidth = 1.5
+                bp.stroke()
+            }
+            drawText(slot.shortLabel, at: CGPoint(x: chip.midX, y: chip.midY - 6),
+                     font: .systemFont(ofSize: 10, weight: active ? .bold : .medium),
+                     color: active ? Theme.accent : Theme.textMuted, align: .center)
+            chipX += chipW
+        }
+
+        // Left: part list
+        let listX = panel.minX + 28
+        let listTop = chipY - 20
+        let listBottom = panel.minY + 48
+        let parts = PartsCatalog.parts(for: engine.hangarSlot)
+        let rowH: CGFloat = 36
+        let visible = max(1, Int((listTop - listBottom) / rowH))
+        var first = 0
+        if engine.hangarPartIndex >= visible {
+            first = engine.hangarPartIndex - visible + 1
+        }
+        first = min(max(0, first), max(0, parts.count - visible))
+
+        drawText(engine.hangarSlot.label.uppercased(),
+                 at: CGPoint(x: listX, y: listTop + 4),
+                 font: .systemFont(ofSize: 11, weight: .bold), color: Theme.gold)
+
+        for (i, part) in parts.enumerated() {
+            let slotIdx = i - first
+            guard slotIdx >= 0, slotIdx < visible else { continue }
+            let y = listTop - 18 - CGFloat(slotIdx) * rowH
+            let selected = i == engine.hangarPartIndex
+            if selected {
+                Theme.accent.withAlphaComponent(0.16).setFill()
+                NSBezierPath(roundedRect: CGRect(x: listX - 4, y: y - 10, width: panelW * 0.42, height: 32),
+                             xRadius: 6, yRadius: 6).fill()
+            }
+            let equipped = engine.hangarDraft.loadout[part.slot] == part.id
+            let owned = engine.player.ownedShipParts?.contains(part.id) == true
+            let cost = engine.hangarInstallCost(for: part)
+            let isPremiumGun = ShipDesign.purchasablePrimaryWeaponIDs.contains(part.id)
+            let titleCol = selected ? Theme.accent : (equipped ? Theme.gold : Theme.textPrimary)
+            let mark = equipped ? "● " : (owned ? "○ " : (isPremiumGun ? "🔒 " : "  "))
+            let price: String
+            if equipped {
+                price = "fitted"
+            } else if owned || cost == 0 {
+                price = owned ? "owned · Enter fit" : "free"
+            } else {
+                price = "\(cost) cr · Enter buy"
+            }
+            drawText(mark + part.name, at: CGPoint(x: listX, y: y + 2),
+                     font: .systemFont(ofSize: 12, weight: selected ? .bold : .medium), color: titleCol)
+            drawText("\(part.desc)  ·  \(price)", at: CGPoint(x: listX, y: y - 12),
+                     font: .systemFont(ofSize: 10),
+                     color: cost > 0 && !owned && !equipped ? Theme.warning : Theme.textMuted)
+        }
+
+        // Center: live ship preview
+        let previewC = CGPoint(x: panel.midX + 40, y: panel.midY + 10)
+        ctx.saveGState()
+        ctx.translateBy(x: previewC.x, y: previewC.y)
+        ctx.rotate(by: CGFloat(engine.time * 0.35))
+        let stats = engine.hangarDraft.computeStats()
+        ShipDrawing.draw(
+            ctx: ctx,
+            stats: stats,
+            options: ShipDrawing.Options(
+                scale: 3.2,
+                thrustGlow: 0.55 + 0.25 * CGFloat(0.5 + 0.5 * sin(engine.time * 10)),
+                shieldPulse: stats.maxShield > 0 ? 0.7 : 0,
+                damaged: 0,
+                rotateToPlusX: true
+            )
+        )
+        ctx.restoreGState()
+        // Soft ring under ship
+        ctx.setStrokeColor(Theme.accent.withAlphaComponent(0.15).cgColor)
+        ctx.setLineWidth(1)
+        ctx.strokeEllipse(in: CGRect(x: previewC.x - 70, y: previewC.y - 70, width: 140, height: 140))
+
+        // Right: combat-effective stats (Mk + hangar frame bonuses)
+        let sx = panel.maxX - 210
+        var sy = panel.maxY - 140
+        let combat = engine.player.stats
+        drawText("IN FLIGHT (Mk + hangar)", at: CGPoint(x: sx, y: sy),
+                 font: .systemFont(ofSize: 11, weight: .bold), color: Theme.gold)
+        sy -= 20
+        let combatLines = [
+            "Hull max  \(Int(combat.maxHull))",
+            "Shield max  \(Int(combat.maxShield))",
+            "Thrust  \(Int(combat.thrust))",
+            "Speed  \(Int(combat.maxSpeed))",
+            "Turn  \(String(format: "%.2f", combat.turnRate))",
+            "Energy  \(Int(combat.maxEnergy)) · regen \(Int(combat.energyRegen))",
+            "Gun Mk  \(engine.player.weaponLevel)",
+        ]
+        for line in combatLines {
+            drawText(line, at: CGPoint(x: sx, y: sy),
+                     font: .monospacedDigitSystemFont(ofSize: 11, weight: .regular),
+                     color: Theme.textSecondary)
+            sy -= 16
+        }
+        sy -= 8
+        drawText("HANGAR FRAME", at: CGPoint(x: sx, y: sy),
+                 font: .systemFont(ofSize: 11, weight: .bold), color: Theme.gold)
+        sy -= 18
+        let frameLines = [
+            "Armor  \(Int(stats.armor))  ·  Shd \(Int(stats.maxShield))",
+            "Frame thrust  \(Int(stats.thrust))",
+            stats.primary.map { "Primary  \($0.name)" } ?? "Primary  —",
+            stats.secondary.map { "Secondary  \($0.name)" } ?? "Secondary  —",
+            String(format: "Hangar DPS  %.0f", stats.dps),
+        ]
+        for line in frameLines {
+            drawText(line, at: CGPoint(x: sx, y: sy),
+                     font: .monospacedDigitSystemFont(ofSize: 10, weight: .regular),
+                     color: Theme.textMuted)
+            sy -= 15
+        }
+
+        drawText("←/→ slots  ·  ↑/↓ browse  ·  Enter buy/fit  ·  R randomize  ·  Esc finish (docked only)",
+                 at: CGPoint(x: panel.midX, y: panel.minY + 16),
+                 font: .systemFont(ofSize: 11), color: Theme.textMuted, align: .center)
+    }
+
     // MARK: - Menus
 
     private static func drawTitle(ctx: CGContext, bounds: CGRect, engine: GameEngine) {
@@ -2687,12 +3097,14 @@ enum Renderer {
         ctx.rotate(by: CGFloat(engine.time * 0.15))
         ShipArt.draw(ctx: ctx, style: Self.playerArtStyle(engine.player.shipClass), scale: 42,
                      accent: engine.player.paintJob.accent,
-                     time: engine.time, paint: engine.player.paintJob)
+                     time: engine.time, paint: engine.player.paintJob,
+                     modularDesign: engine.player.shipDesign, thrustGlow: 0.55)
         ctx.restoreGState()
 
         drawText("STARLANE", at: CGPoint(x: cx, y: bounds.height * 0.72),
                  font: .systemFont(ofSize: 52, weight: .heavy), color: Theme.accent, align: .center)
-        drawText("Freelance the frontier. Trade. Fight. Survive.",
+        let ver = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.31"
+        drawText("v\(ver)  ·  Freelance the frontier. Trade. Fight. Survive.",
                  at: CGPoint(x: cx, y: bounds.height * 0.72 - 36),
                  font: .systemFont(ofSize: 14), color: Theme.textSecondary, align: .center)
 
@@ -2726,21 +3138,23 @@ enum Renderer {
 
         let lines = [
             "FLIGHT",
-            "  A/D or ←/→  Turn    W/S or ↑/↓  Thrust / brake",
-            "  Space  Fire lasers    T or Tab  Cycle hostile targets",
+            "  A/D turn · W/S thrust · Space fire hangar primary gun",
+            "  Q / 1–4  Cycle owned hangar guns (Pulse Laser free)",
+            "  B secondary/missiles · T target · J mines · K chaff",
             "",
             "INTERACT",
-            "  F or E  Dock at stations · Jump through gates",
-            "  R  Mine nearby asteroids for Ore",
+            "  F dock / freelane / jump · R mine / survey",
             "",
-            "STATIONS",
-            "  Trade · missions (incl. escort convoys) · outfit ships & paints",
-            "  Buy freighter / interceptor hulls · Mk upgrades transfer",
-            "  Wanted? Dock Militia stations to pay the fine",
+            "STATIONS (docked)",
+            "  Outfit: Mk amps, cargo, ammo, services · Hangar: modules & guns",
+            "  Drive/Shield/Power Mk stack on hangar Engines/Shields/Utility",
+            "  Gun Amplifiers Mk scale hangar primary damage",
+            "  B classic missiles (Outfit ammo) · 5 toggles hangar secondary",
+            "  J mines / K chaff = Outfit ammo · hangar Mines also on B",
             "",
             "REPUTATION",
-            "  Kill traders → wanted + pirate friends; kill pirates → law likes you",
-            "  Dirty pilots unlock black-market stock at Umbra / Night Market",
+            "  Kill traders → heat; kill pirates → law likes you",
+            "  Wanted? Pay fine at Militia stations",
             "",
             "Press Esc or Enter to return",
         ]
@@ -2828,16 +3242,16 @@ enum Renderer {
         row("S (lane)", "Exit freelane", left: true)
 
         section("COMBAT", left: true)
-        row("Space", "Fire primary weapon", left: true)
-        row("Q", "Cycle laser / plasma / pulse / rail", left: true)
-        row("1–4", "Lasers / Plasma / Pulse / Rail", left: true)
-        row("B", "Fire missile (lock)", left: true)
+        row("Space", "Fire hangar primary gun", left: true)
+        row("Q", "Cycle owned hangar guns", left: true)
+        row("1–4", "Quick-select owned guns", left: true)
+        row("B", "Fire B-mode (missiles or hangar)", left: true)
+        row("5", "Toggle B: classic MSL ↔ hangar", left: true)
         row("J", "Drop proximity mine", left: true)
         row("K", "Countermeasures (chaff)", left: true)
         row("L", "Ancient freelane boost", left: true)
         row("T / Tab", "Cycle targets", left: true)
         row("I", "Hold to scan / identify", left: true)
-        // Note: space weather is passive — fly into colored regions
 
         section("INTERACT", left: false)
         row("F / E", "Dock · jump · freelane", left: false)
@@ -2858,9 +3272,10 @@ enum Renderer {
         row("⌘Q", "Quit", left: false)
 
         section("DOCKED", left: false)
-        row("1–5 · ←/→", "Station tabs", left: false)
+        row("1–6 · ←/→", "Station tabs", left: false)
         row("↑/↓", "Select item", left: false)
-        row("− / +", "Trade qty · paint · hull", left: false)
+        row("− / +", "Trade qty · wingman role · hull career", left: false)
+        row("Outfit Hangar", "Modules, guns, secondaries, livery", left: false)
         row("Enter", "Buy / accept / upgrade", left: false)
         row("F", "Sell (Trade) / shields", left: false)
 
@@ -3298,11 +3713,11 @@ enum Renderer {
         }
     }
 
-    private static func drawPanel(ctx: CGContext, rect: CGRect, radius: CGFloat = 10) {
+    private static func drawPanel(ctx: CGContext, rect: CGRect, radius: CGFloat = 10, accent: NSColor? = nil) {
         Theme.panelBg.setFill()
         let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
         path.fill()
-        Theme.panelBorder.setStroke()
+        (accent ?? Theme.panelBorder).withAlphaComponent(accent == nil ? 1 : 0.85).setStroke()
         path.lineWidth = 1.5
         path.stroke()
     }

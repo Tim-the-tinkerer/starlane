@@ -90,7 +90,7 @@ final class AudioManager {
     func syncMusic(phase: GamePhase, system: String, inCombat: Bool, docked: Bool) {
         let track: MusicTrack
         switch phase {
-        case .title, .howToPlay, .settings, .galaxyMap, .systemMap, .photo, .saveSlots, .loadSlots, .logbook:
+        case .title, .howToPlay, .settings, .galaxyMap, .systemMap, .photo, .saveSlots, .loadSlots, .logbook, .hangar:
             track = .title
         case .docked:
             track = .docked

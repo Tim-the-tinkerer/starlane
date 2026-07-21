@@ -19,6 +19,8 @@ final class GameEngine {
     var message = ""
     var messageTimer: Float = 0
     var keysDown = Set<UInt16>()
+    /// True while player engines are under power (for thruster glow / trails).
+    var isPlayerThrusting = false
 
     // Docking / station UI
     var dockedStationID: UUID?
@@ -33,6 +35,8 @@ final class GameEngine {
     // Combat
     var targetID: UUID?
     var fireCooldown: Float = 0
+    /// Separate timer for hangar secondary / B-key weapons (must not share primary cooldown).
+    var secondaryFireCooldown: Float = 0
     var mineCooldown: Float = 0
     var invuln: Float = 0
     var hurtFlash: Float = 0
@@ -148,11 +152,18 @@ final class GameEngine {
     var capitalAssaultStationName: String?
     var capitalAssaultTimer: Float = 0
 
-    /// Outfitter row count: upgrades + paint + wingman + ship hull + fine + missiles + insurance + loan + protection
-    /// Base outfit rows; alien stations add Vael tech rows after.
-    /// 0 wpn 1 eng 2 shd 3 energy 4 cargo 5 repair 6 paint 7 wingman 8 ship 9 fine 10 missiles
-    /// 11 insurance 12 loan 13 pirate protection 14 mines 15 countermeasures
+    /// Outfitter rows (paint/livery lives in Ship Hangar only).
+    /// Alien stations append Vael tech after the base count.
+    /// 0 gun amp 1 drive amp 2 shield amp 3 power amp 4 cargo 5 repair 6 wingman
+    /// 7 ship class 8 fine 9 missiles 10 insurance 11 loan 12 protection
+    /// 13 mines 14 chaff 15 ship hangar
     static let outfitBaseRowCount = 16
+
+    // MARK: - Ship hangar (Spacecraft Builder)
+    var hangarReturnPhase: GamePhase = .docked
+    var hangarSlot: PartSlot = .hull
+    var hangarPartIndex = 0
+    var hangarDraft: ShipDesign = .default
 
     private let audio = AudioManager.shared
 
@@ -611,6 +622,8 @@ final class GameEngine {
                 audio.play(.select)
                 syncMusic()
             }
+        case .hangar:
+            handleHangarKey(code)
         case .dead:
             if code == Self.keyReturn || code == Self.keySpace {
                 if canInsuranceRespawn {
@@ -905,26 +918,20 @@ final class GameEngine {
             if tryInteractAnomaly() { break }
             tryMine()
         case Self.keyQ:
-            // Cycle primary DE: laser → plasma → pulse → rail
-            cycleWeaponMode()
+            cycleHangarPrimaryWeapon(1)
         case Self.keyB:
-            firePlayerMissile()
+            firePlayerSecondary()
+        case Self.key5:
+            // Toggle B: classic missiles ↔ hangar secondary
+            toggleSecondaryFireMode()
         case Self.key1:
-            player.weaponMode = .laser
-            flash("Weapon: Lasers")
-            audio.play(.select)
+            selectHangarPrimaryByIndex(0)
         case Self.key2:
-            player.weaponMode = .plasma
-            flash("Weapon: Plasma Cannon")
-            audio.play(.select)
+            selectHangarPrimaryByIndex(1)
         case Self.key3:
-            player.weaponMode = .pulse
-            flash("Weapon: Pulse Array")
-            audio.play(.select)
+            selectHangarPrimaryByIndex(2)
         case Self.key4:
-            player.weaponMode = .rail
-            flash("Weapon: Rail Lance")
-            audio.play(.select)
+            selectHangarPrimaryByIndex(3)
         case Self.keyI:
             break // hold-to-scan handled in updatePlayer
         case Self.keyU:
@@ -970,16 +977,42 @@ final class GameEngine {
         }
     }
 
-    private func cycleWeaponMode() {
-        let order = WeaponMode.allCases
-        guard let i = order.firstIndex(of: player.weaponMode) else {
-            player.weaponMode = .laser
-            flash("Weapon: Lasers")
-            audio.play(.select)
+    /// Cycle among hangar primary guns the pilot owns.
+    private func cycleHangarPrimaryWeapon(_ delta: Int) {
+        let owned = player.ownedHangarPrimaries
+        guard !owned.isEmpty else {
+            flash("No hangar guns owned — buy at Ship Hangar while docked.")
+            audio.play(.hurt)
             return
         }
-        player.weaponMode = order[(i + 1) % order.count]
-        flash("Weapon: \(player.weaponMode.displayName)")
+        let curID = player.shipDesign.loadout[.weapon] ?? "wpn_laser"
+        let idx = owned.firstIndex(where: { $0.id == curID }) ?? 0
+        let next = owned[(idx + delta + owned.count) % owned.count]
+        equipOwnedHangarPrimary(next)
+    }
+
+    private func selectHangarPrimaryByIndex(_ index: Int) {
+        let owned = player.ownedHangarPrimaries
+        guard owned.indices.contains(index) else {
+            flash("No gun in slot \(index + 1) — buy more at the hangar.")
+            audio.play(.hurt)
+            return
+        }
+        equipOwnedHangarPrimary(owned[index])
+    }
+
+    private func equipOwnedHangarPrimary(_ part: ShipPart) {
+        var d = player.shipDesign
+        d.loadout[.weapon] = part.id
+        player.shipDesign = d
+        // Mirror legacy weaponMode for HUD/save flavor
+        switch part.weaponType {
+        case .plasma: player.weaponMode = .plasma
+        case .rail, .cannon: player.weaponMode = .rail
+        case .beam: player.weaponMode = .pulse
+        default: player.weaponMode = .laser
+        }
+        flash("Weapon: \(part.name)")
         audio.play(.select)
     }
 
@@ -1347,20 +1380,16 @@ final class GameEngine {
             moveStationCursor(1)
         case Self.keyComma, Self.keyMinus:
             if stationTab == .outfit, outfitSelectIndex == 6 {
-                cyclePaint(-1)
-            } else if stationTab == .outfit, outfitSelectIndex == 7 {
                 cycleWingmanRole(-1)
-            } else if stationTab == .outfit, outfitSelectIndex == 8 {
+            } else if stationTab == .outfit, outfitSelectIndex == 7 {
                 cycleShipClass(-1)
             } else {
                 tradeAmount = max(1, tradeAmount - 1)
             }
         case Self.keyPeriod, Self.keyEqual:
             if stationTab == .outfit, outfitSelectIndex == 6 {
-                cyclePaint(1)
-            } else if stationTab == .outfit, outfitSelectIndex == 7 {
                 cycleWingmanRole(1)
-            } else if stationTab == .outfit, outfitSelectIndex == 8 {
+            } else if stationTab == .outfit, outfitSelectIndex == 7 {
                 cycleShipClass(1)
             } else {
                 tradeAmount = min(99, tradeAmount + 1)
@@ -1370,9 +1399,8 @@ final class GameEngine {
         case Self.keyF, Self.keyE:
             if stationTab == .undock { undock() }
             if stationTab == .warehouse { warehouseWithdraw() }
-            if stationTab == .outfit, outfitSelectIndex == 6 { cyclePaint(1) }
-            if stationTab == .outfit, outfitSelectIndex == 7 { cycleWingmanRole(1) }
-            if stationTab == .outfit, outfitSelectIndex == 8 { cycleShipClass(1) }
+            if stationTab == .outfit, outfitSelectIndex == 6 { cycleWingmanRole(1) }
+            if stationTab == .outfit, outfitSelectIndex == 7 { cycleShipClass(1) }
         case Self.keyM:
             audio.muted.toggle()
         default: break
@@ -1551,6 +1579,7 @@ final class GameEngine {
         if invuln > 0 { invuln -= dt }
         if hurtFlash > 0 { hurtFlash -= dt }
         if fireCooldown > 0 { fireCooldown -= dt }
+        if secondaryFireCooldown > 0 { secondaryFireCooldown -= dt }
         if mineCooldown > 0 { mineCooldown -= dt }
         if spaceMineDropCooldown > 0 { spaceMineDropCooldown -= dt }
         if cmCooldown > 0 { cmCooldown -= dt }
@@ -1690,6 +1719,7 @@ final class GameEngine {
                 reverse = true
             }
         }
+        isPlayerThrusting = thrusting
 
         // Environment modifiers (dust / ice / grav)
         let env = environmentEffects
@@ -1718,7 +1748,7 @@ final class GameEngine {
 
         // Continuous thruster trail while thrusting
         if thrusting {
-            let rate = reverse ? 18 : 28
+            let rate = reverse ? 22 : 34
             if Int(time * Float(rate)) != Int((time - dt) * Float(rate)) {
                 let dir = reverse ? forward : -forward
                 spawnThrustParticle(at: player.position + dir * 12, dir: dir)
@@ -1726,6 +1756,12 @@ final class GameEngine {
                     at: player.position + dir * 10 + SIMD2(Float.random(in: -4...4), Float.random(in: -4...4)),
                     dir: dir
                 )
+                if !reverse {
+                    spawnThrustParticle(
+                        at: player.position + dir * 8 + SIMD2(Float.random(in: -6...6), Float.random(in: -6...6)),
+                        dir: dir
+                    )
+                }
             }
         }
 
@@ -2587,151 +2623,359 @@ final class GameEngine {
     }
 
     private func firePrimaryWeapon() {
-        switch player.weaponMode {
-        case .laser: firePlayerLaser()
-        case .plasma: firePlayerPlasma()
-        case .pulse: firePlayerPulse()
-        case .rail: firePlayerRail()
+        // Hangar-fitted primary (Spacecraft Builder guns)
+        guard let part = player.hangarPrimaryWeapon else {
+            if fireCooldown <= 0 {
+                flash("No primary gun — fit one at the Ship Hangar (docked).")
+                fireCooldown = 0.35
+                audio.play(.hurt)
+            }
+            return
         }
+        // Must own premium hangar weapons
+        if ShipDesign.purchasablePrimaryWeaponIDs.contains(part.id),
+           player.ownedShipParts?.contains(part.id) != true {
+            if fireCooldown <= 0 {
+                flash("\(part.name) not purchased — buy at hangar.")
+                fireCooldown = 0.4
+                audio.play(.hurt)
+            }
+            // Fall back to free laser if owned
+            if player.ownedShipParts?.contains("wpn_laser") != false {
+                var d = player.shipDesign
+                d.loadout[.weapon] = "wpn_laser"
+                player.shipDesign = d
+            }
+            return
+        }
+        fireHangarPrimary(part)
     }
 
-    private func firePlayerLaser() {
-        let cost = player.stats.laserEnergyCost
-        guard player.energy >= cost else {
+    /// Mk weapon level scales hangar gun damage/energy slightly.
+    private var hangarWeaponMkMult: Float {
+        1.0 + Float(player.weaponLevel - 1) * 0.18
+    }
+
+    private func fireHangarPrimary(_ part: ShipPart) {
+        let energyCost = Float(max(2, part.energyDrain)) * (0.85 + Float(player.weaponLevel - 1) * 0.05)
+        guard player.energy >= energyCost else {
             if fireCooldown <= 0 {
-                flash("Energy low — capacitors charging.")
+                flash("Energy low — \(part.name) offline.")
                 fireCooldown = 0.2
                 audio.play(.hurt)
             }
             return
         }
-        player.energy -= cost
-        fireCooldown = player.stats.laserCooldown * environmentEffects.weaponCooldownMult
-        let dir = angleToVector(player.angle)
-        let muzzle = player.position + dir * 18
-        projectiles.append(Projectile(
-            id: UUID(),
-            position: muzzle,
-            velocity: dir * 520 + player.velocity * 0.3,
-            damage: player.stats.laserDamage,
-            life: 1.2,
-            source: .player,
-            ownerID: nil,
-            kind: .laser
-        ))
-        audio.play(.laser)
-        particles.append(Particle(
-            id: UUID(), position: muzzle, velocity: dir * 40,
-            life: 0.12, maxLife: 0.12,
-            color: (0.4, 1.0, 0.9), size: 4
-        ))
-    }
+        player.energy -= energyCost
+        let rate = max(0.15, Float(part.fireRate))
+        fireCooldown = (1.0 / rate) * environmentEffects.weaponCooldownMult
 
-    private func firePlayerPlasma() {
-        let cost = player.stats.plasmaEnergyCost
-        guard player.energy >= cost else {
-            if fireCooldown <= 0 {
-                flash("Energy low — plasma offline.")
-                fireCooldown = 0.25
-                audio.play(.hurt)
-            }
-            return
-        }
-        player.energy -= cost
-        fireCooldown = player.stats.plasmaCooldown * environmentEffects.weaponCooldownMult
         let dir = angleToVector(player.angle)
-        let muzzle = player.position + dir * 20
-        projectiles.append(Projectile(
-            id: UUID(),
-            position: muzzle,
-            velocity: dir * 380 + player.velocity * 0.25,
-            damage: player.stats.plasmaDamage,
-            life: 1.35,
-            source: .player,
-            ownerID: nil,
-            kind: .plasma
-        ))
-        audio.play(.laser)
-        // Heavier muzzle flash
-        for _ in 0..<4 {
-            let a = player.angle + Float.random(in: -0.3...0.3)
-            particles.append(Particle(
-                id: UUID(), position: muzzle,
-                velocity: angleToVector(a) * Float.random(in: 30...90),
-                life: Float.random(in: 0.12...0.22), maxLife: 0.22,
-                color: (0.7, 0.35, 1.0), size: Float.random(in: 3...7)
-            ))
+        let count = max(1, part.projectileCount)
+        let baseDmg = Float(part.damage) * hangarWeaponMkMult
+        // Hull class tweaks
+        let classMult: Float
+        switch player.shipClass {
+        case .interceptor: classMult = 1.15
+        case .freighter: classMult = 0.8
+        case .hybrid: classMult = 1.0
         }
-    }
+        let dmg = baseDmg * classMult
+        let speed = Float(part.projectileSpeed > 0 ? part.projectileSpeed : 600)
+        let life = max(0.5, min(2.2, Float(part.range > 0 ? part.range : 600) / max(200, speed)))
+        let kind = projectileKind(for: part.weaponType)
+        let muzzleBase = player.position + dir * 18
+        let spread = Float(part.spread)
 
-    private func firePlayerPulse() {
-        let cost = player.stats.pulseEnergyCost
-        guard player.energy >= cost else {
-            if fireCooldown <= 0 {
-                flash("Energy low — pulse offline.")
-                fireCooldown = 0.15
-                audio.play(.hurt)
+        for i in 0..<count {
+            let angOff: Float
+            if count == 1 {
+                angOff = 0
+            } else {
+                angOff = (Float(i) / Float(count - 1) - 0.5) * max(0.08, spread)
             }
-            return
-        }
-        player.energy -= cost
-        fireCooldown = player.stats.pulseCooldown * environmentEffects.weaponCooldownMult
-        let dir = angleToVector(player.angle)
-        let muzzle = player.position + dir * 16
-        // Twin staggered bolts
-        for side: Float in [-1, 1] {
-            let offset = angleToVector(player.angle + .pi / 2) * side * 4
+            let shotDir = angleToVector(player.angle + angOff)
+            let lateral = angleToVector(player.angle + .pi / 2) * (count > 1 ? (Float(i) - Float(count - 1) / 2) * 3 : 0)
             projectiles.append(Projectile(
                 id: UUID(),
-                position: muzzle + offset,
-                velocity: dir * 580 + player.velocity * 0.25,
-                damage: player.stats.pulseDamage,
-                life: 0.85,
+                position: muzzleBase + lateral,
+                velocity: shotDir * speed + player.velocity * 0.25,
+                damage: dmg,
+                life: life,
                 source: .player,
                 ownerID: nil,
-                kind: .pulse
+                kind: kind
             ))
         }
         audio.play(.laser)
+        // Muzzle FX tinted by part color
+        let rgb = hangarWeaponRGB(part)
         particles.append(Particle(
-            id: UUID(), position: muzzle, velocity: dir * 50,
-            life: 0.08, maxLife: 0.08,
-            color: (1.0, 0.92, 0.35), size: 3
+            id: UUID(), position: muzzleBase, velocity: dir * 50,
+            life: 0.1, maxLife: 0.12,
+            color: rgb, size: part.weaponType == .rail || part.weaponType == .cannon ? 5 : 3.5
         ))
+        if part.weaponType == .plasma || part.weaponType == .beam {
+            for _ in 0..<3 {
+                let a = player.angle + Float.random(in: -0.35...0.35)
+                particles.append(Particle(
+                    id: UUID(), position: muzzleBase,
+                    velocity: angleToVector(a) * Float.random(in: 40...100),
+                    life: Float.random(in: 0.1...0.2), maxLife: 0.2,
+                    color: rgb, size: Float.random(in: 2...5)
+                ))
+            }
+        }
     }
 
-    private func firePlayerRail() {
-        let cost = player.stats.railEnergyCost
-        guard player.energy >= cost else {
-            if fireCooldown <= 0 {
-                flash("Energy low — rail capacitors charging.")
-                fireCooldown = 0.3
-                audio.play(.hurt)
-            }
-            return
+    private func projectileKind(for kind: WeaponKind) -> ProjectileKind {
+        switch kind {
+        case .laser: return .laser
+        case .plasma: return .plasma
+        case .rail, .cannon: return .rail
+        case .beam: return .pulse
+        default: return .laser
         }
-        player.energy -= cost
-        fireCooldown = player.stats.railCooldown * environmentEffects.weaponCooldownMult
+    }
+
+    private func hangarWeaponRGB(_ part: ShipPart) -> (Float, Float, Float) {
+        if let hex = part.colorHex, let c = NSColor(hex: hex),
+           let srgb = c.usingColorSpace(.sRGB) {
+            return (Float(srgb.redComponent), Float(srgb.greenComponent), Float(srgb.blueComponent))
+        }
+        switch part.weaponType {
+        case .plasma: return (1.0, 0.4, 0.8)
+        case .rail: return (0.55, 0.85, 1.0)
+        case .cannon: return (1.0, 0.8, 0.35)
+        case .beam: return (1.0, 0.3, 0.25)
+        default: return (0.4, 1.0, 0.85)
+        }
+    }
+
+    private func toggleSecondaryFireMode() {
+        switch player.bKeyMode {
+        case .classicMissiles:
+            if player.hangarSecondaryWeapon == nil {
+                flash("No hangar secondary fitted — buy/fit one at Ship Hangar, then press 5.")
+                audio.play(.hurt)
+                return
+            }
+            player.bKeyMode = .hangarSecondary
+            let name = player.hangarSecondaryWeapon?.name ?? "Hangar"
+            flash("B → Hangar secondary (\(name)). Press 5 for classic missiles.")
+        case .hangarSecondary:
+            player.bKeyMode = .classicMissiles
+            flash("B → Classic missiles (\(player.missiles)/\(Player.maxMissiles)). Press 5 for hangar.")
+        }
+        audio.play(.select)
+    }
+
+    /// B key: classic rack missiles **or** hangar secondary (toggle with **5**).
+    private func firePlayerSecondary() {
+        guard secondaryFireCooldown <= 0 else { return }
+
+        switch player.bKeyMode {
+        case .classicMissiles:
+            firePlayerMissile()
+        case .hangarSecondary:
+            if let sec = player.hangarSecondaryWeapon {
+                fireHangarSecondary(sec)
+            } else {
+                // Fitted but not owned, or empty — fall back with notice
+                let secID = player.shipDesign.loadout[.secondary] ?? "sec_none"
+                if secID != "sec_none", let sec = PartsCatalog.part(id: secID),
+                   player.ownedShipParts?.contains(sec.id) != true {
+                    flash("\(sec.name) not owned — buy at hangar, or press 5 for classic missiles.")
+                } else {
+                    flash("No hangar secondary — press 5 for classic missiles.")
+                    player.bKeyMode = .classicMissiles
+                }
+                audio.play(.hurt)
+                secondaryFireCooldown = 0.35
+            }
+        }
+    }
+
+    private func fireHangarSecondary(_ part: ShipPart) {
         let dir = angleToVector(player.angle)
-        let muzzle = player.position + dir * 22
-        projectiles.append(Projectile(
-            id: UUID(),
-            position: muzzle,
-            velocity: dir * 900 + player.velocity * 0.1,
-            damage: player.stats.railDamage,
-            life: 1.6,
-            source: .player,
-            ownerID: nil,
-            kind: .rail
-        ))
-        audio.play(.laser)
-        for _ in 0..<5 {
-            particles.append(Particle(
-                id: UUID(), position: muzzle,
-                velocity: dir * Float.random(in: 40...120) + angleToVector(player.angle + Float.random(in: -0.4...0.4)) * 20,
-                life: Float.random(in: 0.1...0.2), maxLife: 0.2,
-                color: (0.55, 0.8, 1.0), size: Float.random(in: 2...5)
+        let muzzle = player.position + dir * 18
+        let dmgScale = hangarWeaponMkMult
+
+        switch part.weaponType {
+        case .missile:
+            // Seeker pods: use missile racks if available, else pure energy salvo
+            let lock = missileLockTarget()
+            let useStock = player.missiles > 0
+            if !useStock {
+                let energyCost = Float(max(8, part.energyDrain))
+                guard player.energy >= energyCost else {
+                    flash("Need missiles or \(Int(energyCost)) energy for \(part.name).")
+                    audio.play(.hurt)
+                    secondaryFireCooldown = 0.35
+                    return
+                }
+                player.energy -= energyCost
+            } else {
+                player.missiles -= 1
+            }
+            let spd: Float = part.projectileSpeed > 0 ? Float(part.projectileSpeed) : Self.missileSpeed
+            let count = max(1, part.projectileCount)
+            let dmg = Float(part.damage) * dmgScale * player.missileDamageMult
+            let tid = lock?.id
+            for i in 0..<count {
+                let off = count == 1 ? 0 : (Float(i) - Float(count - 1) / 2) * 0.1
+                projectiles.append(Projectile(
+                    id: UUID(),
+                    position: muzzle,
+                    velocity: angleToVector(player.angle + off) * spd + player.velocity * 0.15,
+                    damage: dmg,
+                    life: 4.0,
+                    source: .player,
+                    ownerID: nil,
+                    kind: .missile,
+                    targetID: tid,
+                    tracksPlayer: false,
+                    turnRate: Self.missileTurnRate,
+                    speed: spd
+                ))
+            }
+            secondaryFireCooldown = max(0.45, 1.0 / Float(max(0.25, part.fireRate)))
+            let lockName = lock?.name ?? "dumbfire"
+            flash("\(part.name) → \(lockName)  (\(useStock ? "\(player.missiles) msl" : "energy"))")
+            audio.play(.hurt)
+            for _ in 0..<5 {
+                particles.append(Particle(
+                    id: UUID(), position: muzzle,
+                    velocity: -dir * Float.random(in: 30...90) + SIMD2(Float.random(in: -25...25), Float.random(in: -25...25)),
+                    life: 0.25, maxLife: 0.25,
+                    color: (1.0, 0.6, 0.2), size: 3
+                ))
+            }
+
+        case .mine:
+            // Hangar mines: drop without requiring outfit mine stock (energy cost)
+            if spaceMineDropCooldown > 0 {
+                secondaryFireCooldown = 0.2
+                return
+            }
+            let energyCost = Float(max(6, part.energyDrain))
+            if player.mineStock > 0 {
+                // Prefer stock if available
+                dropMine()
+                secondaryFireCooldown = max(0.5, 1.0 / Float(max(0.3, part.fireRate)))
+            } else if player.energy >= energyCost {
+                player.energy -= energyCost
+                let mine = SpaceMine(
+                    id: UUID(),
+                    position: player.position - dir * 28,
+                    armTimer: 0.9,
+                    life: 45,
+                    radius: 55,
+                    damage: Float(part.damage) * dmgScale,
+                    fromPlayer: true
+                )
+                spaceMines.append(mine)
+                spaceMineDropCooldown = 0.8
+                secondaryFireCooldown = max(0.6, 1.0 / Float(max(0.3, part.fireRate)))
+                flash("\(part.name) deployed (energy).")
+                audio.play(.select)
+            } else {
+                flash("Need mines (Outfit) or \(Int(energyCost)) energy.")
+                audio.play(.hurt)
+                secondaryFireCooldown = 0.35
+            }
+
+        case .spread:
+            let energyCost = Float(max(5, part.energyDrain))
+            guard player.energy >= energyCost else {
+                flash("Energy low — \(part.name) offline.")
+                audio.play(.hurt)
+                secondaryFireCooldown = 0.3
+                return
+            }
+            player.energy -= energyCost
+            let count = max(3, part.projectileCount)
+            let dmg = Float(part.damage) * dmgScale
+            let speed: Float = part.projectileSpeed > 0 ? Float(part.projectileSpeed) : 600
+            let fan = Float(max(0.35, part.spread))
+            for i in 0..<count {
+                let t = count == 1 ? 0 : Float(i) / Float(count - 1) - 0.5
+                let ang = t * fan
+                projectiles.append(Projectile(
+                    id: UUID(),
+                    position: muzzle,
+                    velocity: angleToVector(player.angle + ang) * speed + player.velocity * 0.2,
+                    damage: dmg,
+                    life: 0.9,
+                    source: .player,
+                    ownerID: nil,
+                    kind: .pulse
+                ))
+            }
+            secondaryFireCooldown = max(0.2, 1.0 / Float(max(0.4, part.fireRate)))
+            audio.play(.laser)
+
+        case .torpedo:
+            let energyCost = Float(max(12, part.energyDrain))
+            guard player.energy >= energyCost else {
+                flash("Energy low — \(part.name) offline.")
+                audio.play(.hurt)
+                secondaryFireCooldown = 0.35
+                return
+            }
+            player.energy -= energyCost
+            let speed: Float = part.projectileSpeed > 0 ? Float(part.projectileSpeed) : 280
+            let dmg = Float(part.damage) * dmgScale
+            let lock = missileLockTarget()
+            projectiles.append(Projectile(
+                id: UUID(),
+                position: muzzle,
+                velocity: dir * speed + player.velocity * 0.1,
+                damage: dmg,
+                life: 3.5,
+                source: .player,
+                ownerID: nil,
+                kind: .plasma,
+                targetID: lock?.id,
+                tracksPlayer: false,
+                turnRate: 1.4,
+                speed: speed
             ))
+            secondaryFireCooldown = max(0.8, 1.0 / Float(max(0.2, part.fireRate)))
+            flash("\(part.name) launched.")
+            audio.play(.hurt)
+            for _ in 0..<6 {
+                particles.append(Particle(
+                    id: UUID(), position: muzzle,
+                    velocity: -dir * Float.random(in: 20...70),
+                    life: 0.35, maxLife: 0.35,
+                    color: (1.0, 0.3, 1.0), size: 4
+                ))
+            }
+
+        default:
+            // Any other secondary: energy bolt
+            let energyCost = Float(max(4, part.energyDrain))
+            guard player.energy >= energyCost else {
+                flash("Energy low — \(part.name) offline.")
+                audio.play(.hurt)
+                secondaryFireCooldown = 0.3
+                return
+            }
+            player.energy -= energyCost
+            let speed: Float = part.projectileSpeed > 0 ? Float(part.projectileSpeed) : 500
+            projectiles.append(Projectile(
+                id: UUID(),
+                position: muzzle,
+                velocity: dir * speed + player.velocity * 0.2,
+                damage: Float(part.damage) * dmgScale,
+                life: 1.2,
+                source: .player,
+                ownerID: nil,
+                kind: projectileKind(for: part.weaponType)
+            ))
+            secondaryFireCooldown = max(0.25, 1.0 / Float(max(0.25, part.fireRate)))
+            audio.play(.laser)
         }
     }
 
@@ -5492,8 +5736,9 @@ final class GameEngine {
     }
 
     private func purchaseUpgrade() {
-        // 0 wpn 1 eng 2 shd 3 energy 4 cargo 5 repair 6 paint 7 wingman 8 ship 9 fine 10 missiles
-        // 11+ alien tech at Vael bases
+        // 0 gun 1 drive 2 shield 3 power 4 cargo 5 repair 6 wingman 7 ship 8 fine
+        // 9 missiles 10 insurance 11 loan 12 protection 13 mines 14 chaff 15 hangar
+        // 16+ alien tech at Vael bases
         if let tech = alienTechAtOutfitRow(outfitSelectIndex) {
             buyAlienTech(tech)
             player.applyUpgradeLevels()
@@ -5506,19 +5751,241 @@ final class GameEngine {
         case 3: buyUpgrade(kind: .energy)
         case 4: buyUpgrade(kind: .cargo)
         case 5: repairHull()
-        case 6: equipOrBuyPaint()
-        case 7: hireWingman()
-        case 8: purchaseOrSwapShip()
-        case 9: payWantedFine()
-        case 10: buyMissilePack()
-        case 11: buyInsurance()
-        case 12: takeOrPayLoan()
-        case 13: buyPirateProtection()
-        case 14: buyMinePack()
-        case 15: buyCMPack()
+        case 6: hireWingman()
+        case 7: purchaseOrSwapShip()
+        case 8: payWantedFine()
+        case 9: buyMissilePack()
+        case 10: buyInsurance()
+        case 11: takeOrPayLoan()
+        case 12: buyPirateProtection()
+        case 13: buyMinePack()
+        case 14: buyCMPack()
+        case 15: openHangar()
         default: break
         }
         player.applyUpgradeLevels()
+    }
+
+    // MARK: - Ship Hangar (Spacecraft Builder) — docked only
+
+    /// Hangar is station-only: bay crew won't service you in deep space.
+    func openHangar() {
+        guard phase == .docked || dockedStationID != nil else {
+            flash("Hangar is only available while docked.")
+            audio.play(.hurt)
+            return
+        }
+        hangarReturnPhase = .docked
+        hangarDraft = player.shipDesign
+        hangarSlot = .hull
+        hangarPartIndex = 0
+        // Free starter kit only — premium guns stay locked until purchased
+        var owned = player.ownedShipParts ?? ShipDesign.freeStarterPartIDs
+        owned.formUnion(ShipDesign.freeStarterPartIDs)
+        for (slot, id) in hangarDraft.loadout {
+            if slot == .weapon {
+                if id == "wpn_laser" || id == "wpn_none" { owned.insert(id) }
+            } else if slot == .secondary {
+                if id == "sec_none" { owned.insert(id) }
+            } else {
+                owned.insert(id) // hull/wings already fitted are owned
+            }
+        }
+        // If draft has unowned premium gun, show laser fitted until they buy
+        if let wid = hangarDraft.loadout[.weapon],
+           ShipDesign.purchasablePrimaryWeaponIDs.contains(wid),
+           !owned.contains(wid) {
+            hangarDraft.loadout[.weapon] = "wpn_laser"
+        }
+        player.ownedShipParts = owned
+        syncHangarPartIndex()
+        phase = .hangar
+        flash("Hangar — free Pulse Laser; other guns cost credits. Enter buy · Esc finish.")
+        audio.play(.select)
+        syncMusic()
+    }
+
+    private func syncHangarPartIndex() {
+        let parts = PartsCatalog.parts(for: hangarSlot)
+        if let id = hangarDraft.loadout[hangarSlot],
+           let i = parts.firstIndex(where: { $0.id == id }) {
+            hangarPartIndex = i
+        } else {
+            hangarPartIndex = 0
+        }
+    }
+
+    /// Credits to install `part` right now (0 if already equipped or already owned).
+    func hangarInstallCost(for part: ShipPart) -> Int {
+        if hangarDraft.loadout[part.slot] == part.id { return 0 }
+        if player.ownedShipParts?.contains(part.id) == true { return 0 }
+        return PartsCatalog.installCost(for: part)
+    }
+
+    private func handleHangarKey(_ code: UInt16) {
+        // If we somehow left the bay, dump out of hangar
+        if dockedStationID == nil, phase == .hangar {
+            phase = .playing
+            flash("Left the station — hangar closed.")
+            return
+        }
+        let slots = PartSlot.allCases
+        let parts = PartsCatalog.parts(for: hangarSlot)
+        switch code {
+        case Self.keyEscape, Self.keyP:
+            // Commit design (parts already paid for when equipped)
+            player.shipDesign = hangarDraft
+            if let paintID = hangarDraft.loadout[.paint] {
+                for p in ShipPaint.allCases where p.builderPaintID == paintID {
+                    if !player.ownedPaints.contains(p) { player.ownedPaints.insert(p) }
+                    player.paintJob = p
+                    break
+                }
+            }
+            player.shipDesign = hangarDraft
+            player.applyUpgradeLevels()
+            player.hull = min(player.hull, player.stats.maxHull)
+            player.shield = min(player.shield, player.stats.maxShield)
+            player.energy = min(player.energy, player.stats.maxEnergy)
+            phase = .docked
+            stationTab = .outfit
+            flash("Hangar closed — \(hangarDraft.name). Frame bonuses applied.")
+            audio.play(.dock)
+            syncMusic()
+        case Self.keyLeft, Self.keyA, Self.keyBracketL:
+            if let i = slots.firstIndex(of: hangarSlot) {
+                hangarSlot = slots[(i - 1 + slots.count) % slots.count]
+                syncHangarPartIndex()
+                audio.play(.select)
+            }
+        case Self.keyRight, Self.keyD, Self.keyBracketR:
+            if let i = slots.firstIndex(of: hangarSlot) {
+                hangarSlot = slots[(i + 1) % slots.count]
+                syncHangarPartIndex()
+                audio.play(.select)
+            }
+        case Self.keyUp, Self.keyW:
+            guard !parts.isEmpty else { return }
+            hangarPartIndex = (hangarPartIndex - 1 + parts.count) % parts.count
+            audio.play(.select)
+        case Self.keyDown, Self.keyS:
+            guard !parts.isEmpty else { return }
+            hangarPartIndex = (hangarPartIndex + 1) % parts.count
+            audio.play(.select)
+        case Self.keyReturn, Self.keySpace:
+            guard parts.indices.contains(hangarPartIndex) else { return }
+            tryBuyHangarPart(parts[hangarPartIndex])
+        case Self.keyR:
+            tryRandomizeHangar()
+        case Self.key1, Self.key2, Self.key3, Self.key4, Self.key5, Self.key6, Self.keyComma:
+            let map: [UInt16: Int] = [
+                Self.key1: 0, Self.key2: 1, Self.key3: 2, Self.key4: 3,
+                Self.key5: 4, Self.key6: 5,
+            ]
+            if let idx = map[code], slots.indices.contains(idx) {
+                hangarSlot = slots[idx]
+                syncHangarPartIndex()
+                audio.play(.select)
+            }
+        default: break
+        }
+    }
+
+    @discardableResult
+    private func tryBuyHangarPart(_ part: ShipPart) -> Bool {
+        if hangarDraft.loadout[part.slot] == part.id {
+            flash("Already fitted: \(part.name).")
+            audio.play(.select)
+            return true
+        }
+        let cost = hangarInstallCost(for: part)
+        if cost > 0 {
+            guard player.credits >= cost else {
+                flash("Need \(cost) cr for \(part.name).")
+                audio.play(.hurt)
+                return false
+            }
+            player.credits -= cost
+            var owned = player.ownedShipParts ?? []
+            owned.insert(part.id)
+            player.ownedShipParts = owned
+            flash("Installed \(part.name) (−\(cost) cr).")
+            audio.play(.win)
+        } else {
+            flash("Fitted \(part.name).")
+            audio.play(.select)
+        }
+        hangarDraft.setPart(part)
+        ensureHangarRequiredSlots()
+        // Livery → ship paint colors for modular art
+        if part.slot == .paint {
+            syncPaintJobFromHangarLivery(part.id)
+        }
+        // Preview combat stats immediately while docked in hangar
+        player.shipDesign = hangarDraft
+        player.applyUpgradeLevels()
+        return true
+    }
+
+    /// Map hangar livery part → ShipPaint so hull colors stay consistent.
+    private func syncPaintJobFromHangarLivery(_ paintPartID: String) {
+        for p in ShipPaint.allCases where p.builderPaintID == paintPartID {
+            player.paintJob = p
+            if !player.ownedPaints.contains(p) { player.ownedPaints.insert(p) }
+            return
+        }
+        // Hangar-only liveries: keep closest default arctic if no map
+    }
+
+    private func tryRandomizeHangar() {
+        var trial = hangarDraft
+        trial.randomize()
+        trial.name = player.shipClass.displayName
+        // Sum cost of parts we don't own / aren't currently fitted
+        var total = 0
+        var toOwn: [String] = []
+        for slot in PartSlot.allCases {
+            guard let id = trial.loadout[slot], let part = PartsCatalog.part(id: id) else { continue }
+            if hangarDraft.loadout[slot] == id { continue }
+            if player.ownedShipParts?.contains(id) == true { continue }
+            let c = PartsCatalog.installCost(for: part)
+            if c > 0 {
+                total += c
+                toOwn.append(id)
+            }
+        }
+        if total > 0 {
+            guard player.credits >= total else {
+                flash("Randomize needs \(total) cr (unowned parts).")
+                audio.play(.hurt)
+                return
+            }
+            player.credits -= total
+            var owned = player.ownedShipParts ?? []
+            for id in toOwn { owned.insert(id) }
+            player.ownedShipParts = owned
+            flash("Random loadout (−\(total) cr).")
+        } else {
+            flash("Random loadout (all parts owned).")
+        }
+        hangarDraft = trial
+        ensureHangarRequiredSlots()
+        player.shipDesign = hangarDraft
+        player.applyUpgradeLevels()
+        syncHangarPartIndex()
+        audio.play(.win)
+    }
+
+    private func ensureHangarRequiredSlots() {
+        if hangarDraft.loadout[.hull] == nil {
+            hangarDraft.loadout[.hull] = PartsCatalog.defaults[.hull]
+        }
+        if hangarDraft.loadout[.engine] == nil {
+            hangarDraft.loadout[.engine] = PartsCatalog.defaults[.engine]
+        }
+        if hangarDraft.loadout[.paint] == nil {
+            hangarDraft.loadout[.paint] = PartsCatalog.defaults[.paint]
+        }
     }
 
     private func buyMinePack() {
@@ -5980,6 +6447,10 @@ final class GameEngine {
         let next = all[(i + delta + all.count) % all.count]
         // Preview only owned paints freely; unowned stay preview until purchased
         player.paintJob = next
+        // Keep modular hangar livery in sync for live ship art
+        var design = player.shipDesign
+        design.loadout[.paint] = next.builderPaintID
+        player.shipDesign = design
         audio.play(.select)
         if player.ownedPaints.contains(next) {
             flash("Paint: \(next.displayName)")
@@ -5991,6 +6462,9 @@ final class GameEngine {
     private func equipOrBuyPaint() {
         let paint = player.paintJob
         if player.ownedPaints.contains(paint) {
+            var design = player.shipDesign
+            design.loadout[.paint] = paint.builderPaintID
+            player.shipDesign = design
             flash("Equipped \(paint.displayName).")
             audio.play(.select)
             return
@@ -6002,6 +6476,9 @@ final class GameEngine {
         }
         player.credits -= paint.unlockCost
         player.ownedPaints.insert(paint)
+        var design = player.shipDesign
+        design.loadout[.paint] = paint.builderPaintID
+        player.shipDesign = design
         flash("Unlocked paint: \(paint.displayName) (−\(paint.unlockCost) cr).")
         audio.play(.win)
     }
@@ -6064,7 +6541,7 @@ final class GameEngine {
         audio.play(.win)
     }
 
-    /// Outfitter hull preview (cycled with − / + on ship row).
+    /// Outfitter career / hull-role preview (cycled with − / + on row 7).
     var shipClassPreview: PlayerShipClass = .hybrid
 
     private func cycleShipClass(_ delta: Int) {
@@ -6076,10 +6553,13 @@ final class GameEngine {
         shipClassPreview = all[(i + delta + all.count) % all.count]
         let owned = player.rep.ownedShips.contains(shipClassPreview) || shipClassPreview == .hybrid
         if owned {
-            let tag = shipClassPreview == player.shipClass ? " (equipped)" : " — Enter to swap"
-            flash("Hull: \(shipClassPreview.displayName)\(tag)")
+            if shipClassPreview == player.shipClass {
+                flash("Career: \(shipClassPreview.displayName) (active) · hangar frame is separate")
+            } else {
+                flash("Career: \(shipClassPreview.displayName) — Enter swap · Mk kept · re-fit hangar parts after")
+            }
         } else {
-            flash("Preview: \(shipClassPreview.displayName) — \(shipClassPreview.purchaseCost) cr · Enter buy")
+            flash("Career: \(shipClassPreview.displayName) — \(shipClassPreview.purchaseCost) cr · Mk kept · re-fit hangar after buy")
         }
         audio.play(.select)
     }
@@ -6092,22 +6572,23 @@ final class GameEngine {
         }
         if r.ownedShips.contains(choice) {
             if choice == player.shipClass {
-                flash("Already flying \(choice.displayName).")
+                flash("Already on \(choice.displayName) career. Open Ship Hangar to re-fit parts.")
                 return
             }
-            // Partial transfer: keep Mk levels but soft cargo overflow dump
+            // Keep Mk levels; class preset replaces modular loadout (owned parts stay owned)
             r.shipClass = choice
             player.rep = r
             player.applyUpgradeLevels()
+            player.shipDesign = ShipDesign.preset(for: choice, paint: player.paintJob)
             trimCargoToCapacity()
-            flash("Transferred into \(choice.displayName). Upgrades retained.")
-            postNews("Hull swap: now piloting a \(choice.displayName).")
+            flash("Career → \(choice.displayName). Mk kept · re-fit hangar parts after swap.")
+            postNews("Career change: now flying \(choice.displayName) role.")
             audio.play(.win)
             return
         }
         let cost = choice.purchaseCost
         guard player.credits >= cost else {
-            flash("Need \(cost) cr for \(choice.displayName).")
+            flash("Need \(cost) cr for \(choice.displayName) career.")
             audio.play(.hurt)
             return
         }
@@ -6116,12 +6597,13 @@ final class GameEngine {
         r.shipClass = choice
         player.rep = r
         player.applyUpgradeLevels()
-        // Fresh purchase: full hull/shields for new frame
+        player.shipDesign = ShipDesign.preset(for: choice, paint: player.paintJob)
+        // Fresh career: full hull/shields for new profile
         player.hull = player.stats.maxHull
         player.shield = player.stats.maxShield
         trimCargoToCapacity()
-        flash("Purchased \(choice.displayName) (−\(cost) cr). Mk upgrades kept.")
-        postNews("Shipyard: pilot acquired a \(choice.displayName).")
+        flash("Career unlocked: \(choice.displayName) (−\(cost) cr). Mk kept · re-fit hangar parts after swap.")
+        postNews("Shipyard: pilot unlocked \(choice.displayName) career.")
         audio.play(.win)
     }
 
@@ -6887,59 +7369,107 @@ final class GameEngine {
     // MARK: - VFX helpers
 
     private func spawnThrustParticle(at pos: SIMD2<Float>, dir: SIMD2<Float>) {
+        // Prefer hangar engine plume color when available
+        var rgb: (Float, Float, Float) = (1.0, Float.random(in: 0.45...0.85), 0.15)
+        if let c = player.shipDesign.computeStats().engineColor.usingColorSpace(.sRGB) {
+            rgb = (
+                Float(c.redComponent) * 0.85 + 0.15,
+                Float(c.greenComponent) * 0.75 + Float.random(in: 0...0.15),
+                Float(c.blueComponent) * 0.55
+            )
+        }
         particles.append(Particle(
             id: UUID(),
             position: pos + SIMD2(Float.random(in: -3...3), Float.random(in: -3...3)),
-            velocity: dir * Float.random(in: 40...90) + SIMD2(Float.random(in: -20...20), Float.random(in: -20...20)),
-            life: Float.random(in: 0.2...0.45),
-            maxLife: 0.45,
-            color: (1.0, Float.random(in: 0.5...0.85), 0.2),
-            size: Float.random(in: 2...4)
+            velocity: dir * Float.random(in: 45...100) + SIMD2(Float.random(in: -22...22), Float.random(in: -22...22)),
+            life: Float.random(in: 0.18...0.42),
+            maxLife: 0.42,
+            color: rgb,
+            size: Float.random(in: 2.2...5)
         ))
     }
 
     private func spawnHitParticles(at pos: SIMD2<Float>, enemy: Bool) {
-        for _ in 0..<6 {
+        for _ in 0..<8 {
             let a = Float.random(in: 0...(2 * .pi))
             particles.append(Particle(
                 id: UUID(),
                 position: pos,
-                velocity: angleToVector(a) * Float.random(in: 30...100),
-                life: Float.random(in: 0.15...0.4),
-                maxLife: 0.4,
-                color: enemy ? (1.0, 0.5, 0.2) : (0.5, 0.9, 1.0),
-                size: Float.random(in: 2...5)
+                velocity: angleToVector(a) * Float.random(in: 35...120),
+                life: Float.random(in: 0.12...0.38),
+                maxLife: 0.38,
+                color: enemy ? (1.0, Float.random(in: 0.35...0.65), 0.12) : (0.45, 0.85, 1.0),
+                size: Float.random(in: 2...6)
             ))
         }
+        // Brief white spark core
+        particles.append(Particle(
+            id: UUID(), position: pos, velocity: .zero,
+            life: 0.08, maxLife: 0.08,
+            color: (1.0, 1.0, 0.95), size: 6
+        ))
     }
 
     private func spawnExplosion(at pos: SIMD2<Float>, big: Bool) {
-        let n = big ? 28 : 12
-        for _ in 0..<n {
-            let a = Float.random(in: 0...(2 * .pi))
+        let n = big ? 32 : 14
+        // White/gold flash core
+        for _ in 0..<(big ? 4 : 2) {
             particles.append(Particle(
                 id: UUID(),
                 position: pos,
-                velocity: angleToVector(a) * Float.random(in: 40...200),
-                life: Float.random(in: 0.3...0.9),
-                maxLife: 0.9,
-                color: (1.0, Float.random(in: 0.3...0.8), 0.1),
-                size: Float.random(in: 3...8)
+                velocity: SIMD2(Float.random(in: -20...20), Float.random(in: -20...20)),
+                life: Float.random(in: 0.08...0.16),
+                maxLife: 0.16,
+                color: (1.0, 0.95, 0.75),
+                size: Float.random(in: big ? 14...22 : 8...14)
+            ))
+        }
+        // Shockwave ring particles (large, short life)
+        for _ in 0..<(big ? 2 : 1) {
+            particles.append(Particle(
+                id: UUID(),
+                position: pos,
+                velocity: .zero,
+                life: 0.22,
+                maxLife: 0.22,
+                color: (1.0, 0.7, 0.25),
+                size: big ? 28 : 16
+            ))
+        }
+        for _ in 0..<n {
+            let a = Float.random(in: 0...(2 * .pi))
+            let late = Float.random(in: 0...1) > 0.55
+            particles.append(Particle(
+                id: UUID(),
+                position: pos,
+                velocity: angleToVector(a) * Float.random(in: 40...220),
+                life: Float.random(in: 0.3...0.95),
+                maxLife: 0.95,
+                color: late
+                    ? (0.35, 0.22, 0.12) // smoke
+                    : (1.0, Float.random(in: 0.3...0.85), 0.08),
+                size: Float.random(in: 3...9)
             ))
         }
     }
 
     private func spawnJumpEffect(at pos: SIMD2<Float>) {
-        for _ in 0..<40 {
+        // Bright violet flash
+        particles.append(Particle(
+            id: UUID(), position: pos, velocity: .zero,
+            life: 0.15, maxLife: 0.15,
+            color: (0.85, 0.7, 1.0), size: 20
+        ))
+        for _ in 0..<44 {
             let a = Float.random(in: 0...(2 * .pi))
             particles.append(Particle(
                 id: UUID(),
                 position: pos,
-                velocity: angleToVector(a) * Float.random(in: 80...280),
-                life: Float.random(in: 0.4...1.0),
+                velocity: angleToVector(a) * Float.random(in: 80...300),
+                life: Float.random(in: 0.35...1.0),
                 maxLife: 1.0,
-                color: (0.6, 0.4, 1.0),
-                size: Float.random(in: 2...6)
+                color: (Float.random(in: 0.45...0.75), Float.random(in: 0.3...0.55), 1.0),
+                size: Float.random(in: 2...7)
             ))
         }
     }

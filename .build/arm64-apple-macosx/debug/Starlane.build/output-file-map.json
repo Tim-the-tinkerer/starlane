@@ -65,6 +65,27 @@
     "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.swiftdeps",
     "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipArt.dia"
   },
+  "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/PartsCatalog.swift": {
+    "dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/PartsCatalog.d",
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/PartsCatalog.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/PartsCatalog~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/PartsCatalog.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/PartsCatalog.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDesign.swift": {
+    "dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDesign.d",
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDesign.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDesign~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDesign.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDesign.dia"
+  },
+  "/Users/timbestler/starlane/Sources/Starlane/ShipBuilder/ShipDrawing.swift": {
+    "dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDrawing.d",
+    "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDrawing.swift.o",
+    "swiftmodule": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDrawing~partial.swiftmodule",
+    "swift-dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDrawing.swiftdeps",
+    "diagnostics": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/ShipDrawing.dia"
+  },
   "/Users/timbestler/starlane/Sources/Starlane/StarlaneApp.swift": {
     "dependencies": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.d",
     "object": "/Users/timbestler/starlane/.build/arm64-apple-macosx/debug/Starlane.build/StarlaneApp.swift.o",
